@@ -1,0 +1,63 @@
+name: GoVoices
+packages:
+  Shared:
+    path: ./generated/Shared
+  App:
+    path: ./generated/App
+options:
+  bundleIdPrefix: com.tszarzynski.govoices
+attributes:
+  BuildIndependentTargetsInParallel: true
+configFiles:
+  Debug: Signing.xcconfig
+  Release: Signing.xcconfig
+
+targetTemplates:
+  GoVoices:
+    type: application
+    sources:
+      - path: GoVoices
+        excludes:
+          - "Info-*.plist"
+          - "*.entitlements"
+    scheme:
+      management:
+        shared: true
+    dependencies:
+      - package: Shared
+      - package: App
+      - sdk: CoreMIDI.framework
+    settings:
+      PRODUCT_NAME: GoVoices
+      PRODUCT_BUNDLE_IDENTIFIER: com.tszarzynski.govoices
+      OTHER_LDFLAGS: [-w]
+      ENABLE_USER_SCRIPT_SANDBOXING: NO
+      ASSETCATALOG_COMPILER_APPICON_NAME: ""
+
+targets:
+  GoVoices-iOS:
+    templates: [GoVoices]
+    platform: iOS
+    deploymentTarget: "18.0"
+    dependencies:
+      - sdk: CoreAudioKit.framework
+    info:
+      path: GoVoices/Info-iOS.plist
+      properties:
+        CFBundleDisplayName: GO Voices
+        NSBluetoothAlwaysUsageDescription: GO Voices pairs with your Bluetooth MIDI keyboard to send it sounds.
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+    settings:
+      TARGETED_DEVICE_FAMILY: "1,2"
+  GoVoices-macOS:
+    templates: [GoVoices]
+    platform: macOS
+    deploymentTarget: "15.0"
+    info:
+      path: GoVoices/Info-macOS.plist
+      properties:
+        CFBundleDisplayName: GO Voices
+        LSApplicationCategoryType: public.app-category.music
+        NSBluetoothAlwaysUsageDescription: GO Voices sends sounds to your Bluetooth MIDI keyboard.

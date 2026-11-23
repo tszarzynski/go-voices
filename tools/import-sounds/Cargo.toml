@@ -1,0 +1,15 @@
+[package]
+name = "import-sounds"
+version = "0.1.0"
+description = "Builds catalogue/data/patches.tsv from GO:Plus's GO-sounds.md"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+catalogue = { workspace = true, features = ["std"] }

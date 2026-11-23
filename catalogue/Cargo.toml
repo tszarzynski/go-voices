@@ -1,0 +1,18 @@
+[package]
+name = "catalogue"
+version = "0.1.0"
+description = "The GO:KEYS sounds (JUNO-DS and GM2 patches), with search"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+std = ["facet/std", "serde/std"]
+
+[dependencies]
+facet.workspace = true
+serde.workspace = true

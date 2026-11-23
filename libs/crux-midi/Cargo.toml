@@ -1,0 +1,27 @@
+[package]
+name = "crux-midi"
+version = "0.1.0"
+description = "MIDI device effects and a connection manager for Crux apps: list, connect, reconnect, scan for Bluetooth LE MIDI, and send"
+edition.workspace = true
+rust-version.workspace = true
+license = "MIT OR Apache-2.0"
+keywords = ["midi", "crux", "bluetooth", "no-std"]
+categories = ["no-std", "multimedia::audio"]
+readme = "README.md"
+
+[lints]
+workspace = true
+
+[features]
+# On by default. Turn it off to build for an embedded target.
+default = ["std"]
+std = ["crux_core/std", "facet/std", "futures/std", "serde/std"]
+
+[dependencies]
+crux_core.workspace = true
+facet.workspace = true
+futures.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+crux_core = { workspace = true, features = ["testing"] }

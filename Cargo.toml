@@ -1,0 +1,34 @@
+# GO Voices: the Crux core, its catalogue of GO:KEYS sounds, the MIDI
+# connection library, the BoltFFI bridge for the Apple shell, and the
+# importer that builds the catalogue.
+[workspace]
+members = ["catalogue", "libs/crux-midi", "shared", "shared_ffi", "tools/import-sounds"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.91"
+license = "MIT"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cognitive_complexity = "warn"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.dependencies]
+anyhow = "1.0.104"
+boltffi = "=0.30.1"
+# The same crux_core as chord-detector: the no_std spike
+# (redbadger/crux#627, branch spike/no-std). Move it with chord-detector's.
+crux_core = { git = "https://github.com/redbadger/crux", rev = "974d2a9fc093755929eefb6c030bfe318fdf770c", default-features = false, features = ["crux_macros"] }
+# A copy of chord-detector's libs/crux-midi (from its crux-midi branch,
+# commit e0bb044), kept here so this repo builds on its own.
+crux_midi = { package = "crux-midi", path = "libs/crux-midi", default-features = false }
+facet = { version = "=0.46.5", default-features = false, features = ["alloc"] }
+futures = { version = "0.3", default-features = false, features = ["alloc"] }
+serde = { version = "1.0.229", default-features = false, features = ["alloc", "derive"] }
+serde_json = { version = "1", default-features = false, features = ["alloc"] }
+catalogue = { path = "catalogue", default-features = false }

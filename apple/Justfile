@@ -1,0 +1,101 @@
+default: dev
+
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
+
+# checks required tools are installed
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @command -v xcodebuild >/dev/null && command -v xcodegen >/dev/null && command -v boltffi >/dev/null && echo "  ✓ xcodebuild, xcodegen, boltffi" || echo "  ✗ need Xcode, xcodegen (brew), boltffi_cli =0.30.1"
+    @command -v swiftlint >/dev/null && echo "  ✓ swiftlint" || echo "  - swiftlint not installed (optional: brew install swiftlint)"
+
+# installs Rust targets required for Apple packaging with BoltFFI
+install-targets:
+    @echo '{{ style("command") }}install-targets:{{ NORMAL }}'
+    TOOLCHAIN="${RUSTUP_TOOLCHAIN:-$(rustup show active-toolchain | awk '{print $1}')}" ; \
+    echo "  Toolchain: $TOOLCHAIN" ; \
+    rustup target add --toolchain "$TOOLCHAIN" \
+        aarch64-apple-darwin \
+        x86_64-apple-darwin \
+        aarch64-apple-ios \
+        aarch64-apple-ios-sim \
+        x86_64-apple-ios
+
+# auto-fix formatting and lint issues
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    @command -v swiftlint >/dev/null || { echo "  swiftlint not installed: skipped"; exit 0; }; swiftlint --fix GoVoices/
+
+# validate formatting and lint
+check:
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    @command -v swiftlint >/dev/null || { echo "  swiftlint not installed: skipped"; exit 0; }; swiftlint lint GoVoices/
+
+# generates Swift types via codegen binary
+typegen:
+    @echo '{{ style("command") }}typegen:{{ NORMAL }}'
+    RUST_LOG=info cargo run \
+        --package shared_ffi \
+        --bin codegen \
+        --features codegen,facet_typegen \
+        -- \
+            --language swift \
+            --output-dir generated
+
+# builds the shared library as a Swift package using BoltFFI
+[working-directory('../shared_ffi')]
+package: install-targets
+    @echo '{{ style("command") }}package:{{ NORMAL }}'
+    rm -rf ../apple/generated/Shared
+    boltffi pack apple
+
+# rebuilds the Xcode project from project.yml
+generate-project:
+    @echo '{{ style("command") }}generate-project:{{ NORMAL }}'
+    xcodegen
+
+# generates types, builds shared package, and regenerates Xcode project
+generate: typegen package generate-project
+
+# builds the Mac app and the iOS app for the simulator (generates first)
+build: generate
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    xcodebuild \
+        -project GoVoices.xcodeproj \
+        -scheme GoVoices-macOS \
+        -configuration Debug \
+        ONLY_ACTIVE_ARCH=YES \
+        -skipPackagePluginValidation \
+        build
+    xcodebuild \
+        -project GoVoices.xcodeproj \
+        -scheme GoVoices-iOS \
+        -configuration Debug \
+        -destination 'generic/platform=iOS Simulator' \
+        ONLY_ACTIVE_ARCH=YES \
+        CODE_SIGNING_ALLOWED=NO \
+        -skipPackagePluginValidation \
+        build
+
+# runs tests
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    @echo "  Tests require generated packages — run 'just build' first"
+
+# cleans build artifacts
+clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    rm -rf generated *.xcodeproj *.xcworkspace DerivedData build
+    cargo clean
+
+# local development workflow
+dev: fix check build test
+
+# CI workflow
+ci: check build test
+
+# open in Xcode (generates the packages and the project first)
+open: generate
+    @echo '{{ style("command") }}open:{{ NORMAL }}'
+    xed .

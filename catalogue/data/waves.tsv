@@ -1,0 +1,1045 @@
+1	1	Ac.Pno*p A L
+1	2	Ac.Pno*p A R
+1	3	Ac.Pno*p A M
+1	4	Ac.Pno*p B L
+1	5	Ac.Pno*p B R
+1	6	Ac.Pno*p B M
+1	7	Ac.Pno*p C L
+1	8	Ac.Pno*p C R
+1	9	Ac.Pno*p C M
+1	10	Ac.Pno*f A L
+1	11	Ac.Pno*f A R
+1	12	Ac.Pno*f A M
+1	13	Ac.Pno*f B L
+1	14	Ac.Pno*f B R
+1	15	Ac.Pno*f B M
+1	16	Ac.Pno*f C L
+1	17	Ac.Pno*f C R
+1	18	Ac.Pno*f C M
+1	19	Ac.Pno p A L
+1	20	Ac.Pno p A R
+1	21	Ac.Pno p A M
+1	22	Ac.Pno p B L
+1	23	Ac.Pno p B R
+1	24	Ac.Pno p B M
+1	25	Ac.Pno p C L
+1	26	Ac.Pno p C R
+1	27	Ac.Pno p C M
+1	28	Ac.Pno f A L
+1	29	Ac.Pno f A R
+1	30	Ac.Pno f A M
+1	31	Ac.Pno f B L
+1	32	Ac.Pno f B R
+1	33	Ac.Pno f B M
+1	34	Ac.Pno f C L
+1	35	Ac.Pno f C R
+1	36	Ac.Pno f C M
+1	37	XPr.P*mp A L
+1	38	XPr.P*mp A R
+1	39	XPr.P*mp A M
+1	40	XPr.P*mp B L
+1	41	XPr.P*mp B R
+1	42	XPr.P*mp B M
+1	43	XPr.P*mp C L
+1	44	XPr.P*mp C R
+1	45	XPr.P*mp C M
+1	46	XPr.P*ff A L
+1	47	XPr.P*ff A R
+1	48	XPr.P*ff A M
+1	49	XPr.P*ff B L
+1	50	XPr.P*ff B R
+1	51	XPr.P*ff B M
+1	52	XPr.P*ff C L
+1	53	XPr.P*ff C R
+1	54	XPr.P*ff C M
+1	55	XPr.P mp A L
+1	56	XPr.P mp A R
+1	57	XPr.P mp A M
+1	58	XPr.P mp B L
+1	59	XPr.P mp B R
+1	60	XPr.P mp B M
+1	61	XPr.P mp C L
+1	62	XPr.P mp C R
+1	63	XPr.P mp C M
+1	64	XPr.P ff A L
+1	65	XPr.P ff A R
+1	66	XPr.P ff A M
+1	67	XPr.P ff B L
+1	68	XPr.P ff B R
+1	69	XPr.P ff B M
+1	70	XPr.P ff C L
+1	71	XPr.P ff C R
+1	72	XPr.P ff C M
+1	73	HM-Pno* A L
+1	74	HM-Pno* A R
+1	75	HM-Pno* A M
+1	76	HM-Pno* B L
+1	77	HM-Pno* B R
+1	78	HM-Pno* B M
+1	79	HM-Pno* C L
+1	80	HM-Pno* C R
+1	81	HM-Pno* C M
+1	82	HM-Pno A L
+1	83	HM-Pno A R
+1	84	HM-Pno A M
+1	85	HM-Pno B L
+1	86	HM-Pno B R
+1	87	HM-Pno B M
+1	88	HM-Pno C L
+1	89	HM-Pno C R
+1	90	HM-Pno C M
+1	91	HM-Pno L+
+1	92	HM-Pno R+
+1	93	JD Piano A
+1	94	JD Piano B
+1	95	JD Piano C
+1	96	Piano Atk Nz
+1	97	MKS Piano A
+1	98	MKS Piano B
+1	99	MKS Piano C
+1	100	Vint.EP mp A
+1	101	Vint.EP mp B
+1	102	Vint.EP mp C
+1	103	Vint.EP f  A
+1	104	Vint.EP f  B
+1	105	Vint.EP f  C
+1	106	Vint.EP ff A
+1	107	Vint.EP ff B
+1	108	Vint.EP ff C
+1	109	Stage EP p A
+1	110	Stage EP p B
+1	111	Stage EP p C
+1	112	Stage EP f A
+1	113	Stage EP f B
+1	114	Stage EP f C
+1	115	Tine EP p A
+1	116	Tine EP p B
+1	117	Tine EP p C
+1	118	Tine EP mf A
+1	119	Tine EP mf B
+1	120	Tine EP mf C
+1	121	Tine EP ff A
+1	122	Tine EP ff B
+1	123	Tine EP ff C
+1	124	Dyno EP mp A
+1	125	Dyno EP mp B
+1	126	Dyno EP mp C
+1	127	Dyno EP mf A
+1	128	Dyno EP mf B
+1	129	Dyno EP mf C
+1	130	Wurly DI p A
+1	131	Wurly DI p B
+1	132	Wurly DI p C
+1	133	Wurly DI f A
+1	134	Wurly DI f B
+1	135	Wurly DI f C
+1	136	Wurly DI ffA
+1	137	Wurly DI ffB
+1	138	Wurly DI ffC
+1	139	Soft SA EP A
+1	140	Soft SA EP B
+1	141	Soft SA EP C
+1	142	Hard SA EP A
+1	143	Hard SA EP B
+1	144	Hard SA EP C
+1	145	SA E.Piano A
+1	146	SA E.Piano B
+1	147	SA E.Piano C
+1	148	80's E.Pno 1
+1	149	80's E.Pno 2
+1	150	80's E.Pno 3
+1	151	80's E.Pno 4
+1	152	Hard E.Pno
+1	153	Celesta
+1	154	Music Box
+1	155	ClavDB Brt A
+1	156	ClavDB Brt B
+1	157	ClavDB Brt C
+1	158	Reg.Clav A
+1	159	Reg.Clav B
+1	160	Reg.Clav C
+1	161	Retro Clav A
+1	162	Retro Clav B
+1	163	Retro Clav C
+1	164	Tight Clav A
+1	165	Tight Clav B
+1	166	Tight Clav C
+1	167	Hard Clav A
+1	168	Hard Clav B
+1	169	Hard Clav C
+1	170	ClavMtRls DB
+1	171	Harpsi A
+1	172	Harpsi B
+1	173	Harpsi C
+1	174	JLOrg Slow L
+1	175	JLOrg Slow R
+1	176	JLOrg Fast L
+1	177	JLOrg Fast R
+1	178	GT Organ
+1	179	JD Full Draw
+1	180	Org Basic 1
+1	181	Org Basic 2
+1	182	Ballad Org
+1	183	3rd Perc Org
+1	184	Perc Organ
+1	185	Rock Organ A
+1	186	Rock Organ B
+1	187	Rock Organ C
+1	188	Rtry Org A L
+1	189	Rtry Org A R
+1	190	Rtry Org B L
+1	191	Rtry Org B R
+1	192	Rtry Org C L
+1	193	Rtry Org C R
+1	194	LoFi RtryOrg
+1	195	Vint.Org 1
+1	196	Vint.Org 2
+1	197	Vint.Org 3
+1	198	Vint.Org 4
+1	199	Positive '8
+1	200	Pipe Organ
+1	201	Cathedrl Org
+1	202	BrtNyl.Gtr A
+1	203	BrtNyl.Gtr B
+1	204	BrtNyl.Gtr C
+1	205	Nylon Gtr1 A
+1	206	Nylon Gtr1 B
+1	207	Nylon Gtr1 C
+1	208	Nylon Gtr2 A
+1	209	Nylon Gtr2 B
+1	210	Nylon Gtr2 C
+1	211	Bright Gtr A
+1	212	Bright Gtr B
+1	213	Bright Gtr C
+1	214	Ac.Guitar A
+1	215	Ac.Guitar B
+1	216	Ac.Guitar C
+1	217	Ac.Gtr Hrm A
+1	218	Ac.Gtr Hrm B
+1	219	Ac.Gtr Hrm C
+1	220	Jazz Gtr A
+1	221	Jazz Gtr B
+1	222	Jazz Gtr C
+1	223	Clean Gtr A
+1	224	Clean Gtr B
+1	225	Clean Gtr C
+1	226	Clr Mt Gtr A
+1	227	Clr Mt Gtr B
+1	228	Clr Mt Gtr C
+1	229	E.Gtr Ld
+1	230	Brt Strat A
+1	231	Brt Strat B
+1	232	Brt Strat C
+1	233	FstPick70s A
+1	234	FstPick70s B
+1	235	FstPick70s C
+1	236	Funk Gtr A
+1	237	Funk Gtr B
+1	238	Funk Gtr C
+1	239	Funk MtGtr A
+1	240	Funk MtGtr B
+1	241	Funk MtGtr C
+1	242	Nasty Gtr
+1	243	Overdrive A
+1	244	Overdrive C
+1	245	Distortion A
+1	246	Distortion B
+1	247	Distortion C
+1	248	Dist Chord A
+1	249	Dist Chord B
+1	250	Dist Chord C
+1	251	E.Gtr Harm
+1	252	Harp A
+1	253	Harp B
+1	254	Harp C
+1	255	Banjo A
+1	256	Banjo B
+1	257	Banjo C
+1	258	Sitar A
+1	259	Sitar B
+1	260	Sitar C
+1	261	Sitar Drn A
+1	262	Sitar Drn B
+1	263	Sitar Drn C
+1	264	E.Sitar A
+1	265	E.Sitar B
+1	266	E.Sitar C
+1	267	Santur A
+1	268	Santur B
+1	269	Santur C
+1	270	Shamisen A
+1	271	Shamisen B
+1	272	Shamisen C
+1	273	Koto A
+1	274	Koto B
+1	275	Koto C
+1	276	FatAcBs p HA
+1	277	FatAcBs p HB
+1	278	FatAcBs p HC
+1	279	FatAcBs p NA
+1	280	FatAcBs p NB
+1	281	FatAcBs p NC
+1	282	FatAcBs f HA
+1	283	FatAcBs f HB
+1	284	FatAcBs f HC
+1	285	FatAcBs f NA
+1	286	FatAcBs f NB
+1	287	FatAcBs f NC
+1	288	Ac.Bass A
+1	289	Ac.Bass B
+1	290	Ac.Bass C
+1	291	Fng.EB1 mf A
+1	292	Fng.EB1 mf B
+1	293	Fng.EB1 mf C
+1	294	Fng.EB1 ff A
+1	295	Fng.EB1 ff B
+1	296	Fng.EB1 ff C
+1	297	Fng.EB2 A
+1	298	Fng.EB2 B
+1	299	Fng.EB2 C
+1	300	Finger Bs A
+1	301	Finger Bs B
+1	302	Finger Bs C
+1	303	Precision Bs
+1	304	Thumb MtBs A
+1	305	Thumb MtBs B
+1	306	Thumb MtBs C
+1	307	Fretlss Bs A
+1	308	Fretlss Bs B
+1	309	Fretlss Bs C
+1	310	Fretlss SftA
+1	311	Fretlss SftB
+1	312	Fretlss SftC
+1	313	Pick EB 1 A
+1	314	Pick EB 1 B
+1	315	Pick EB 1 C
+1	316	Pick EB 2
+1	317	Slp.E.BassA
+1	318	Slp.E.BassB
+1	319	Slp.E.BassC
+1	320	Pul.E.BassA
+1	321	Pul.E.BassB
+1	322	Pul.E.BassC
+1	323	Jungle Bass
+1	324	Garage Bass
+1	325	SH-101 Bs A
+1	326	SH-101 Bs B
+1	327	SH-101 Bs C
+1	328	MG Bass 1 A
+1	329	MG Bass 1 B
+1	330	MG Bass 1 C
+1	331	MG Bass 2
+1	332	MG Bass 3
+1	333	MC Bass A
+1	334	MC Bass B
+1	335	MC Bass C
+1	336	Atk Syn Bass
+1	337	Flute A
+1	338	Flute B
+1	339	Flute C
+1	340	Piccolo A
+1	341	Piccolo B
+1	342	Piccolo C
+1	343	Pan Flute
+1	344	Shakuhachi
+1	345	JD Fl Push
+1	346	Clarinet A
+1	347	Clarinet B
+1	348	Clarinet C
+1	349	Oboe A
+1	350	Oboe B
+1	351	Oboe C
+1	352	E.Horn A
+1	353	E.Horn B
+1	354	E.Horn C
+1	355	Bassoon A
+1	356	Bassoon B
+1	357	Bassoon C
+1	358	Recorder A
+1	359	Recorder B
+1	360	Recorder C
+1	361	SopranoSax A
+1	362	SopranoSax B
+1	363	SopranoSax C
+1	364	Soft Alto A
+1	365	Soft Alto B
+1	366	Soft Alto C
+1	367	Wide Sax A
+1	368	Wide Sax B
+1	369	Wide Sax C
+1	370	BreathySax A
+1	371	BreathySax B
+1	372	BreathySax C
+1	373	TenorBreathy
+1	374	Tenor Sax A
+1	375	Tenor Sax B
+1	376	Tenor Sax C
+1	377	Bari.Sax A
+1	378	Bari.Sax B
+1	379	Bari.Sax C
+1	380	Musette
+1	381	Harmonica A
+1	382	Harmonica B
+1	383	Harmonica C
+1	384	Blues G-harp
+1	385	Flugel A
+1	386	Flugel B
+1	387	Flugel C
+1	388	Trumpet A
+1	389	Trumpet B
+1	390	Trumpet C
+1	391	Wide Tp A
+1	392	Wide Tp B
+1	393	Wide Tp C
+1	394	Mute Tp A
+1	395	Mute Tp B
+1	396	Mute Tp C
+1	397	Trombone 1 A
+1	398	Trombone 1 B
+1	399	Trombone 1 C
+1	400	Trombone 2 A
+1	401	Trombone 2 B
+1	402	Trombone 2 C
+1	403	Tuba A
+1	404	Tuba B
+1	405	Tuba C
+1	406	Sft F.Horn A
+1	407	Sft F.Horn B
+1	408	Sft F.Horn C
+1	409	French Hrn A
+1	410	French Hrn C
+1	411	XP Horn A
+1	412	XP Horn B
+1	413	F.HornSect A
+1	414	F.HornSect B
+1	415	F.HornSect C
+1	416	Tp Section A
+1	417	Tp Section B
+1	418	Tp Section C
+1	419	OctBrass A L
+1	420	OctBrass A R
+1	421	OctBrass B L
+1	422	OctBrass B R
+1	423	OctBrass C L
+1	424	OctBrass C R
+1	425	XP Brass
+1	426	OrchUnis A L
+1	427	OrchUnis A R
+1	428	OrchUnis B L
+1	429	OrchUnis B R
+1	430	OrchUnis C L
+1	431	OrchUnis C R
+1	432	Violin A
+1	433	Violin B
+1	434	Violin C
+1	435	Cello A
+1	436	Cello B
+1	437	Cello C
+1	438	Vl Sect. A L
+1	439	Vl Sect. A R
+1	440	Vl Sect. B L
+1	441	Vl Sect. B R
+1	442	Vl Sect. C L
+1	443	Vl Sect. C R
+1	444	Vc Sect. A L
+1	445	Vc Sect. A R
+1	446	Vc Sect. B L
+1	447	Vc Sect. B R
+1	448	Vc Sect. C L
+1	449	Vc Sect. C R
+1	450	Full Str A L
+1	451	Full Str A R
+1	452	Full Str B L
+1	453	Full Str B R
+1	454	Full Str C L
+1	455	Full Str C R
+1	456	JV Strings L
+1	457	JV Strings R
+1	458	JV Strings A
+1	459	JV Strings C
+1	460	F.Str A L
+1	461	F.Str A R
+1	462	F.Str B L
+1	463	F.Str B R
+1	464	F.Str C L
+1	465	F.Str C R
+1	466	F.Str LpL
+1	467	F.Str LpR
+1	468	F.StrStacA L
+1	469	F.StrStacA R
+1	470	F.StrStacB L
+1	471	F.StrStacB R
+1	472	F.StrStacC L
+1	473	F.StrStacC R
+1	474	ChmbrStrAtkA
+1	475	ChmbrStrAtkB
+1	476	ChmbrStrAtkC
+1	477	ChmbrStrRevA
+1	478	ChmbrStrRevB
+1	479	ChmbrStrRevC
+1	480	Vls Pizz A
+1	481	Vls Pizz B
+1	482	Vls Pizz C
+1	483	VlsPizzRev A
+1	484	VlsPizzRev B
+1	485	VlsPizzRev C
+1	486	Vcs Pizz A
+1	487	Vcs Pizz B
+1	488	Vcs Pizz C
+1	489	Unison Saw A
+1	490	Unison Saw B
+1	491	Unison Saw C
+1	492	Super Saw A
+1	493	Super Saw B
+1	494	Super Saw C
+1	495	Trance Saw A
+1	496	Trance Saw B
+1	497	Trance Saw C
+1	498	Warm Pad A
+1	499	Warm Pad B
+1	500	Warm Pad C
+1	501	OB2 Pad 1 A
+1	502	OB2 Pad 1 B
+1	503	OB2 Pad 1 C
+1	504	OB2 Pad 2 A
+1	505	OB2 Pad 2 B
+1	506	OB2 Pad 2 C
+1	507	D-50 HeavenA
+1	508	D-50 HeavenB
+1	509	D-50 HeavenC
+1	510	SBF Vox A
+1	511	SBF Vox B
+1	512	SBF Vox C
+1	513	Syn Vox A
+1	514	Syn Vox B
+1	515	Syn Vox C
+1	516	Female Ahs A
+1	517	Female Ahs B
+1	518	Female Ahs C
+1	519	Female Oos A
+1	520	Female Oos B
+1	521	Female Oos C
+1	522	Male Aahs A
+1	523	Male Aahs B
+1	524	Male Aahs C
+1	525	Jz Doos 1 A
+1	526	Jz Doos 1 B
+1	527	Jz Doos 1 C
+1	528	JzDoos1 Lp A
+1	529	JzDoos1 Lp B
+1	530	JzDoos1 Lp C
+1	531	Jz Doos 2 A
+1	532	Jz Doos 2 B
+1	533	Jz Doos 2 C
+1	534	Jz Doos 2 lp
+1	535	JzVoiceDat A
+1	536	JzVoiceDat B
+1	537	JzVoiceDat C
+1	538	Gospel Hum A
+1	539	Gospel Hum B
+1	540	Gospel Hum C
+1	541	Soprano Vox
+1	542	Kalimba
+1	543	JD Klmba Atk
+1	544	JD Wood Crak
+1	545	JD Gamelan 1
+1	546	JD Gamelan 2
+1	547	JD Log Drum
+1	548	JD Xylo
+1	549	Marimba
+1	550	Vibraphone
+1	551	Glocken
+1	552	Steel Drums
+1	553	D-50 Bell A
+1	554	D-50 Bell B
+1	555	D-50 Bell C
+1	556	D-50 Bell Lp
+1	557	Agogo Bell
+1	558	Finger Bell
+1	559	Tubular Bell
+1	560	Church Bell
+1	561	Mild CanWave
+1	562	JD Crystal
+1	563	Bell Organ
+1	564	Old DigiBell
+1	565	JD Bell Wave
+1	566	TinyBellWave
+1	567	Vib Wave
+1	568	JD Brt Digi
+1	569	Bagpipe
+1	570	Digital Vox
+1	571	JD WallyWave
+1	572	JD Brusky Lp
+1	573	Bright Form
+1	574	JD Nasty
+1	575	JD Spark Vox
+1	576	JD Cutters
+1	577	SBF Hrd Ld
+1	578	JD EML 5th
+1	579	Juno Saw HD
+1	580	TB303 Saw HD
+1	581	Custm Saw HD
+1	582	MG Saw HD
+1	583	Real MG Saw
+1	584	DigitalSawHD
+1	585	P5 Saw HD
+1	586	Calc.Saw
+1	587	Calc.Saw inv
+1	588	Synth Saw
+1	589	JD Syn Saw
+1	590	JD Fat Saw
+1	591	JP-8 Saw
+1	592	OB2 Saw HD
+1	593	700 Saw A
+1	594	700 Saw B
+1	595	700 Saw C
+1	596	D-50 Saw
+1	597	LA-Saw
+1	598	Air Wave
+1	599	GR-300 Saw
+1	600	Juno Sqr HD
+1	601	P5 Sqr HD
+1	602	Fat Square
+1	603	JP-8 Square
+1	604	SH-2 Square
+1	605	TB303 Sqr HD
+1	606	TB Dst Sqr A
+1	607	TB Dst Sqr B
+1	608	TB Dst Sqr C
+1	609	Dist SquareA
+1	610	Dist SquareB
+1	611	Dist SquareC
+1	612	JP8 Pls 10HD
+1	613	JP8 Pls 15HD
+1	614	JP8 Pls 25HD
+1	615	JP8 Pls 30HD
+1	616	JP8 Pls 40HD
+1	617	JP8 Pls 45HD
+1	618	Syn Pulse 1
+1	619	Syn Pulse 2
+1	620	700 Triangle
+1	621	Syn Triangle
+1	622	JD Triangle
+1	623	VS-Ramp
+1	624	Sync Sweep
+1	625	Sine
+1	626	JD Fine Wine
+1	627	Digi Loop
+1	628	JD MetalWind
+1	629	Atmosphere
+1	630	DigiSpectrum
+1	631	JD Vox Noise
+1	632	SynVox Noise
+1	633	Shaku Noise
+1	634	Digi Breath
+1	635	Agogo Noise
+1	636	White Noise
+1	637	Pink Noise
+1	638	Aah Formant
+1	639	Eeh Formant
+1	640	Iih Formant
+1	641	Ooh Formant
+1	642	Uuh Formant
+1	643	Metal Vox W1
+1	644	Metal Vox W2
+1	645	Metal Vox L
+1	646	Metal Vox W3
+1	647	JD Rattles
+1	648	Xylo Seq.
+1	649	JD Anklungs
+1	650	JD Shami
+1	651	SynBassClick
+1	652	JD EP Atk
+1	653	Key On Click
+1	654	Org Click 1
+1	655	Org Click 2
+1	656	JD Switch
+1	657	JD Tuba Slap
+1	658	TVF Trigger
+1	659	Hi Q
+1	660	Slap
+1	661	Stick
+1	662	Click
+1	663	Cutting Nz
+1	664	Ac.Bass Body
+1	665	Flute Pad Nz
+1	666	Applause
+1	667	River
+1	668	Thunder
+1	669	Monsoon
+1	670	Stream
+1	671	Bubble
+1	672	Bird Song
+1	673	Dog Bark
+1	674	Gallop
+1	675	Vint.Phone
+1	676	Office Phone
+1	677	Mobile Phone
+1	678	Door Creak
+1	679	Door Slam
+1	680	Car Engine
+1	681	Car Slip
+1	682	Car Pass
+1	683	Crash Seq.
+1	684	Gun Shot
+1	685	Siren
+1	686	Train
+1	687	Airplane
+1	688	Helicopter
+1	689	Space Voyage
+1	690	Blow Loop
+1	691	Laugh
+1	692	Scream
+1	693	Punch
+1	694	Heartbeat
+1	695	Footsteps
+1	696	Machine Gun
+1	697	Laser
+1	698	Thunder Lp
+1	699	Ac.Bass Nz
+1	700	E.Bass Nz 1
+1	701	E.Bass Nz 2
+1	702	E.Bass Slide
+1	703	Fng.EB Sld
+1	704	DistGtr Nz 1
+1	705	DistGtr Nz 2
+1	706	Gtr Fret Nz1
+1	707	Gtr Fret Nz2
+1	708	ClassicHseHt
+1	709	Narrow Hit
+1	710	Dist Hit
+1	711	Thin Beef
+1	712	Smear Hit
+1	713	LoFi Min Hit
+1	714	Orch. Hit
+1	715	Punch Hit
+1	716	O'Skool Hit
+1	717	Philly Hit
+1	718	Scratch 1
+1	719	Scratch 2
+1	720	Scratch 3
+1	721	Scratch 4
+1	722	Scratch Push
+1	723	Scratch Pull
+1	724	MG Zap 1
+1	725	MG Zap 2
+1	726	MG Zap 3
+1	727	MG Attack
+1	728	Syn Hrd Atk1
+1	729	Syn Hrd Atk2
+1	730	Syn Swt Atk1
+1	731	Syn Swt Atk2
+1	732	Syn Swt Atk3
+1	733	Syn Swt Atk4
+1	734	SF Kick L
+1	735	SF Kick R
+1	736	Reg.Kick L
+1	737	Reg.Kick R
+1	738	Jazz Kick
+1	739	Jz Dry Kick
+1	740	TR909 Kick 1
+1	741	TR909 Kick 2
+1	742	Analog Kick
+1	743	TR808 Kick
+1	744	SH32 Kick
+1	745	SF Snr L
+1	746	SF Snr R
+1	747	SF Rim L
+1	748	SF Rim R
+1	749	Reg.Snr L
+1	750	Reg.Snr R
+1	751	Reg.SnrGst L
+1	752	Reg.SnrGst R
+1	753	Sft Snr Gst
+1	754	Jz Brsh Slap
+1	755	Jz Brsh Swsh
+1	756	Swish&Turn
+1	757	Concert SD
+1	758	Analog Snr
+1	759	TR909 Snr 1
+1	760	TR909 Snr 2
+1	761	TR808 Snr 1
+1	762	TR808 Snr 2
+1	763	SF Crs Stk L
+1	764	SF Crs Stk R
+1	765	Soft Stick
+1	766	TR808 Rim
+1	767	LD L.Tom
+1	768	LD M.Tom
+1	769	LD H.Tom
+1	770	RR F.Tom
+1	771	SF M.Tom
+1	772	SF H.Tom
+1	773	Reg.F.Tom
+1	774	Reg.M.Tom
+1	775	Reg.H.Tom
+1	776	TR808 Tom
+1	777	Deep Tom
+1	778	Reg.CHH p
+1	779	Reg.CHH ff
+1	780	Reg.PHH mf
+1	781	Reg.PHH f
+1	782	Reg.OHH mf
+1	783	Reg.OHH ff
+1	784	TR808 CHH
+1	785	Noise CHH
+1	786	TR808 OHH
+1	787	TR606 OHH
+1	788	Rock Crash
+1	789	Splash Cym
+1	790	TR808 Cym
+1	791	Ride Cymbal
+1	792	Rock Rd Cup
+1	793	Rock Rd Edge
+1	794	China Cymbal
+1	795	Concert Cym
+1	796	Gospel Clap
+1	797	TR808 Clap 1
+1	798	TR808 Clap 2
+1	799	Cowbell
+1	800	TR808Cowbell
+1	801	Wood Block H
+1	802	Wood Block L
+1	803	Claves
+1	804	TR808 Claves
+1	805	Castanet
+1	806	Whistle
+1	807	Bongo High
+1	808	Bongo Low
+1	809	Conga Hi Mt
+1	810	Conga Slap
+1	811	Conga Hi Op
+1	812	Conga Low Op
+1	813	TR808 Conga1
+1	814	TR808 Conga2
+1	815	Timbale High
+1	816	Timbale Low
+1	817	Cabasa Cut
+1	818	Maracas
+1	819	808 Maracas
+1	820	R8 Shaker
+1	821	Guiro Short
+1	822	Guiro Long
+1	823	Vibraslap
+1	824	Tambourine
+1	825	Cuica Mute
+1	826	Cuica Open
+1	827	Timpani p
+1	828	Timpani f
+1	829	Timpani Roll
+1	830	Timpani Lp
+1	831	ConcertBD p
+1	832	ConcertBD f
+1	833	ConcertBD ff
+1	834	ConcertBD Lp
+1	835	Triangle
+1	836	Jingle Bell
+1	837	Wind Chime
+1	838	Crotale
+1	839	R8 Click
+1	840	Metro Bell
+1	841	Metro Click
+1	842	DR202 Beep
+1	843	Low Sine
+1	844	DC
+1	845	Reverse Cym
+1	846	MC500 Beep 1
+1	847	MC500 Beep 2
+1	848	TB Dst Saw A
+1	849	TB Dst Saw B
+1	850	TB Dst Saw C
+1	851	Jz Doos 2 Lp
+1	852	JzVoiceBop A
+1	853	JzVoiceBop B
+1	854	JzVoiceBop C
+1	855	JzVoiceDouFA
+1	856	JzVoiceDouFB
+1	857	JzVoiceDouFC
+1	858	D50 Fantas 1
+1	859	D50 Fantas 2
+1	860	Flute Vib3 A
+1	861	Flute Atk A
+2	1	GrandP* 1 mp
+2	2	GrandP* 1 f
+2	3	GrandP* 1 ff
+2	4	GrandP* 2 mp
+2	5	GrandP* 2 f
+2	6	GrandP* 2 ff
+2	7	GrandP*mp CL
+2	8	GrandP*mp CR
+2	9	GrandP* f CL
+2	10	GrandP* f CR
+2	11	GrandP*ff CL
+2	12	GrandP*ff CR
+2	13	Erhu 4 mp
+2	14	Erhu 4 f
+2	15	Erhu 4 Vib
+2	16	Erhu 4 Harm
+2	17	Banhu mf
+2	18	Banhu Vib
+2	19	Banhu Harm
+2	20	Banhu Orna
+2	21	Jinghu mf
+2	22	Jinghu  f
+2	23	Sihu mp
+2	24	Sihu mf
+2	25	Sihu w/Atk
+2	26	Sihu Harm
+2	27	Matouqin2 mp
+2	28	Matouqin2Vib
+2	29	Yangqin 2 mp
+2	30	Yangqin 2 mf
+2	31	Yangqin 2Hrd
+2	32	Yangqin2Trem
+2	33	Zhongruan mp
+2	34	Zhongruan mf
+2	35	Zhngruan Hrm
+2	36	ZhngruanStrm
+2	37	Guqin mp
+2	38	Guqin mf
+2	39	Guqin Harm
+2	40	Qudi 2 mp
+2	41	Qudi 2 f
+2	42	Qudi 2 Orna
+2	43	Xiao 2 f
+2	44	Xiao2 Vib  f
+2	45	Hulusi 2 mf
+2	46	Hulusi Atk
+2	47	Gu Roll
+2	48	Gu Hi
+2	49	Changgo
+2	50	Tang Gu Mt
+2	51	Tang Gu Op
+2	52	Shu Gu Rim
+2	53	Shu Gu
+2	54	Shu Ban
+2	55	Dholak 9
+2	56	Dholak 10
+2	57	Dhol 3
+2	58	Wadon 8
+2	59	Wadon 9
+2	60	Wadon 10
+2	61	Wadon 11
+2	62	Wadon 12
+2	63	Wadon 13
+2	64	Wadon 14
+2	65	Wadaiko
+2	66	Shimedaiko
+2	67	Wadaiko Rim
+2	68	Naggra 1 p
+2	69	Naggra 1 mf
+2	70	Naggra 1 f
+2	71	Naggra 1 ff
+2	72	Naggra 2 p
+2	73	Naggra 2 mf
+2	74	Naggra 2 f
+2	75	Naggra 2 ff
+2	76	Naggra 3 p
+2	77	Naggra 3 mf
+2	78	Naggra 3 f
+2	79	Naggra 3 ff
+2	80	Naggra 4 p
+2	81	Naggra 4 mf
+2	82	Naggra 4 f
+2	83	Naggra 4 ff
+2	84	Nggr Flam 1
+2	85	Nggr Flam 2
+2	86	Nggr Flam 3
+2	87	Nggr Flam 4
+2	88	Nggr Mute p
+2	89	Nggr Mute mf
+2	90	Nggr Mute f
+2	91	Nggr Mute ff
+2	92	Nggr Roll 1
+2	93	Nggr Roll 2
+2	94	Nggr Roll 3
+2	95	Nggr Roll 4
+2	96	Nggr Side p
+2	97	Nggr Side mf
+2	98	Nggr Side f
+2	99	Nggr Side ff
+2	100	Dap 1 p
+2	101	Dap 1 f
+2	102	Dap 2 p
+2	103	Dap 2 mf
+2	104	Dap 2 f
+2	105	Dap 2 ff
+2	106	Dap 3
+2	107	Dap 4
+2	108	Dap 5
+2	109	Dap 6
+2	110	Dap 7
+2	111	Dap 8
+2	112	Dap 9
+2	113	Dap 10
+2	114	Dap 11
+2	115	Dap 12
+2	116	Dap 13
+2	117	Dap 14
+2	118	Dap 15
+2	119	Dap 16
+2	120	Dap Roll 1
+2	121	Dap Roll 2
+2	122	Dap Roll 3
+2	123	Dap Roll 4
+2	124	Dap Roll 5
+2	125	Dap Roll 6
+2	126	Dap Roll 7
+2	127	Tabla 1
+2	128	Tabla 2
+2	129	Tabla 3
+2	130	Tabla 4
+2	131	Tabla 5
+2	132	Tabla 6
+2	133	Tabla 7
+2	134	Tabla 8
+2	135	Tabla 9
+2	136	Tabla 10
+2	137	Tabla 11
+2	138	TablaRoll 1
+2	139	TablaRoll 2
+2	140	TablaRoll 3
+2	141	TablaRoll 4
+2	142	TablaRoll 5
+2	143	TablaRoll 6
+2	144	TablaRoll 7
+2	145	TablaRoll 8
+2	146	TablaRoll 9
+2	147	Cga Mute Hi
+2	148	Cga Mute Lo
+2	149	Mokugyo 1
+2	150	Mokugyo 2
+2	151	Ban Gu 3
+2	152	Ban Gu 4
+2	153	Ban Gu 5
+2	154	Ohkawa
+2	155	Nao Bo
+2	156	Xiao Bo
+2	157	Kopyak Mt
+2	158	Kopyak Op
+2	159	Chenchen Opn
+2	160	Chenchen Cls
+2	161	Ceng Ceng 2
+2	162	Kwaengwari f
+2	163	KwaengwariMt
+2	164	Sagat Open 2
+2	165	Sagat Close2
+2	166	Asian Gong 2
+2	167	Shou Luo 1
+2	168	Shou Luo 2
+2	169	HuYinLuoH Op
+2	170	HuYinLuoL Op
+2	171	HuYinLuoH Mt
+2	172	HuYinLuoL Mt
+2	173	Big Gong
+2	174	Kane 2
+2	175	Kane Side
+2	176	Kwaengwari p
+2	177	GamelanGong2
+2	178	Saron
+2	179	Wind Bell 2
+2	180	Jinghu Menu
+2	181	Sihu Menu
+2	182	Matoqn Menu
+2	183	118:China Ph
+2	184	132:China Ph

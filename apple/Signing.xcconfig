@@ -1,0 +1,9 @@
+// Signing for running on a device. Builds for the Mac and the iOS simulator
+// don't need it.
+//
+// Put your Apple developer team in apple/Local.xcconfig (not committed):
+//
+//     DEVELOPMENT_TEAM = ABCDE12345
+//
+// It then survives `just apple generate`, which rebuilds the Xcode project.
+#include? "Local.xcconfig"
