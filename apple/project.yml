@@ -29,10 +29,13 @@ targetTemplates:
       - sdk: CoreMIDI.framework
     settings:
       PRODUCT_NAME: GoVoices
+      MARKETING_VERSION: 0.1.0 # as the core's
+      CURRENT_PROJECT_VERSION: 1
       PRODUCT_BUNDLE_IDENTIFIER: com.tszarzynski.govoices
       OTHER_LDFLAGS: [-w]
       ENABLE_USER_SCRIPT_SANDBOXING: NO
-      ASSETCATALOG_COMPILER_APPICON_NAME: ""
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor # the GO:KEYS red, GoKeys.accent
 
 targets:
   GoVoices-iOS:
@@ -44,10 +47,13 @@ targets:
     info:
       path: GoVoices/Info-iOS.plist
       properties:
-        CFBundleDisplayName: GO Voices
-        NSBluetoothAlwaysUsageDescription: GO Voices pairs with your Bluetooth MIDI keyboard to send it sounds.
+        CFBundleDisplayName: Go:Voices
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSBluetoothAlwaysUsageDescription: Go:Voices pairs with your Bluetooth MIDI keyboard to send it sounds.
         UILaunchScreen: {}
-        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        # iPhone: portrait only, for now; the arrangement leaves no room for the list in landscape.
+        UISupportedInterfaceOrientations~iphone: [UIInterfaceOrientationPortrait]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
     settings:
       TARGETED_DEVICE_FAMILY: "1,2"
@@ -58,6 +64,9 @@ targets:
     info:
       path: GoVoices/Info-macOS.plist
       properties:
-        CFBundleDisplayName: GO Voices
+        CFBundleDisplayName: Go:Voices
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleName: Go:Voices
         LSApplicationCategoryType: public.app-category.music
-        NSBluetoothAlwaysUsageDescription: GO Voices sends sounds to your Bluetooth MIDI keyboard.
+        NSBluetoothAlwaysUsageDescription: Go:Voices sends sounds to your Bluetooth MIDI keyboard.

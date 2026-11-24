@@ -1,4 +1,4 @@
-# GO Voices: browse and select GO:KEYS sounds over BLE MIDI
+# Go:Voices: browse and select GO:KEYS sounds over BLE MIDI
 
 ## Outcome
 On iPhone, iPad or Mac, you browse, search and tap any of the ~1,380 GO:KEYS voices (JUNO-DS and GM2) and the keyboard switches to it over Bluetooth MIDI.
@@ -188,6 +188,22 @@ go-voices/
 - [ ] Parked: crux-midi keeps typed errors (`Option<MidiError>`), the app's core words them. Do it in one shared crux-midi: bring go-voices' copy (adds `auto_connect_only`) and chord-detector's together, publish to GitHub (ask first), and have both apps depend on it {#crux-midi-shared}
 ### Zone map (stage 3 of 3)
 - [ ] Up to 4 parts on a key-range bar, replacing Lower/Upper and the split menu {#zone-map}
+
+### Arrangement first (2026-11-24)
+- [x] Presets listed with a small zone map each. (A Sounds | Setups switch at the top was tried and dropped: presets stay in the tree) {#ui-modes}
+- [x] Arrangement strip at the top: one lane per part as a dotted pad (sound, category, keys), drag an end or the middle (resize and hand cursors on the Mac), tap to select, double-tap to edit (`OpenEditor`); Add part; the preset loaded, Save, Save as {#ui-arrangement}
+- [x] One display over the list, the selected part's (`ViewModel.display`), with − / + and Edit {#ui-target}
+- [x] Edit panel beside the list (sheet on iPhone, half height), following the selected part; keyboard-wide effects moved to the keyboard sheet {#ui-inspector}
+- [x] Buttons by what they change: the keyboard button at the end of the preset row; the preset's name as a menu (Save as, Rename; the One sound / Split / Layer starts were dropped as Add part covers them) with Save beside it; + Add part as an empty lane under the parts; Edit beside the display and − / + {#ui-placement}
+- [x] GO:KEYS look: red body with rounded dark panels; lanes and buttons as dotted pads (silver = selected, wine = not); round red-rim buttons for actions (−, +, Edit, Save, Reset); amber readouts for menu values; one corner radius inside panels; one panel grey; Quicksand headings, Space Grotesk controls, JetBrains Mono readouts {#ui-gokeys}
+- [x] Review fixes: menus fit their cells; ⌘S / ⌘⇧S outside the preset menu; VoiceOver keeps controls' own names; iPad sheet only closes the editor when the person closes it; shared rename alert; one count on iPhone; pads filled from a drawn tile; tooltips on controls; layer keys dragged like lanes {#ui-review}
+- [x] Colours: every colour a token in `Theme.swift`; silver only for selection, key grey for keys played; changes stay red, envelopes silver, favourites amber; brighter small print; named shades instead of ad-hoc opacities; LEDs with a light rim {#ui-colours}
+- [x] Spacing: one scale in `Theme.swift` (joined 3, tight 4, gap 8, page 12, section 24, row 32); every panel inset 12 {#ui-spacing}
+- [x] Named Go:Voices; app icon: the round button with GO:V, drawn by `apple/scripts/icon.swift` {#icon}
+- [x] About and Help: windows from the Mac's menus (⌘?), pads at the bottom of the keyboard sheet on iOS {#help}
+- [x] Review fixes: keyboard sheet opens after the Edit sheet on iPhone (sheet state in the core, built only while open); a tap on a lane wobbling a little stays a tap; a layer's changed keys rimmed red; layer cards two by two at any width; a layer's band moved in one `SetLayerKeys`; one copy of the octave marks; `EditPart`/`OpenEditor` share a branch; Back to One Sound in the preset menu; iPhone portrait only {#review-2}
+- [x] Text size on the Mac: View › Text Size, Comfortable (0.9× spacing, 0.93× text) or Compact (0.77×, as the iPad app on a Mac); kept between launches {#text-size}
+- [ ] The person checks the new layout on Mac and iPhone {#ui-check}
 
 ### Review
 - [ ] The person tries the app with the GO:KEYS {#review}

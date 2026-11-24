@@ -5,7 +5,8 @@ import SwiftUI
 /// spirit of a DAW's browser. The display is a Roland-style backlit orange
 /// LCD. One look: no light/dark variants.
 enum GoKeys {
-    /// The keyboard's red: whatever is selected.
+    /// The keyboard's red: its body, the round buttons' rims, what's on,
+    /// and what's changed (Edited, a changed knob's ring).
     static let accent = Color(hex: 0xE0242B)
 
     static let background = Color(hex: 0x1C1C1C) // the list
@@ -15,34 +16,94 @@ enum GoKeys {
     static let line = Color(hex: 0x111111) // 1px borders between controls
 
     static let text = Color(hex: 0xE4E4E4)
-    static let dim = Color(hex: 0x8E8E8E)
+    static let dim = Color(hex: 0xA3A3A3) // small print and labels
+    static let faint = Color(hex: 0x5E5E5E) // an unset star, the least there is
+
+    /// What's switched off or can't be used yet, faded by this.
+    static let disabled = 0.4
+
+    // A keyboard's keys: the ruler's white and black keys; the white is
+    // also any range of keys that's played but not selected (a preset's
+    // parts, a layer's keys).
+    static let keys = Color(hex: 0x6E6E6E)
+    static let keysBlack = background
+
+    // The pads' two dotted finishes and the text on them.
+    static let silver: UInt32 = 0x9C9C9C
+    static let silverDots: UInt32 = 0x808080
+    static let onSilver = Color(hex: 0x1A1A1A)
+    static let onSilverDim = Color(hex: 0x3D3D3D)
+    static let wine: UInt32 = 0x4A1418
+    static let wineDots: UInt32 = 0x6A2228
+    static let onWine = text
+    static let onWineDim = Color(hex: 0xC29A9D)
 
     // The display: a backlit amber LCD with dark pixels, after the JUNO-G.
     static let display = Color(hex: 0xFF7A0F)
     static let displayText = Color(hex: 0x2E0F00)
+    static let displayDim = Color(hex: 0x823A06) // its unlit pixels' shade
 
+    // LEDs, and the favourite star's amber.
     static let green = Color(hex: 0x4CD964)
     static let amber = Color(hex: 0xFFB020)
-    static let red = Color(hex: 0xFF3B3B)
+    static let red = Color(hex: 0xFF4D4D)
 
-    /// The Mac draws everything at the size the iPad version has there:
-    /// macOS shows iPad apps at 77%. Elsewhere, 1.
-    #if os(macOS)
-    static let scale: CGFloat = 0.77
-    #else
-    static let scale: CGFloat = 1
-    #endif
+    /// The size everything is drawn at on the Mac, chosen in the View
+    /// menu; kept between launches. Set before the views are drawn again.
+    nonisolated(unsafe) static var size = TextSize.saved
+
+    /// Spacing and sizes. On the Mac, at `size`; elsewhere, 1.
+    static var scale: CGFloat {
+        #if os(macOS)
+        size.scale
+        #else
+        1
+        #endif
+    }
 
     /// A size in points, at `scale`.
     static func s(_ points: CGFloat) -> CGFloat { points * scale }
 
-    static let page: CGFloat = GoKeys.s(12)
-    static let gap: CGFloat = GoKeys.s(8)
+    /// Text and icons. On the Mac, at `size`; elsewhere, 1.
+    static var textScale: CGFloat {
+        #if os(macOS)
+        size.textScale
+        #else
+        1
+        #endif
+    }
 
-    /// Registers the bundled fonts (both SIL OFL) with CoreText: Inter for
-    /// the interface, VT323 for the display's dot matrix.
+    /// A text or icon size in points, at `textScale`.
+    static func t(_ points: CGFloat) -> CGFloat { points * textScale }
+
+    // One spacing scale: every gap and inset is one of these.
+    /// Pads joined in a group.
+    static var joined: CGFloat { GoKeys.s(3) }
+    /// An icon to its text, inside a control; a heading to its hint.
+    static var tight: CGFloat { GoKeys.s(4) }
+    /// Between controls in a row, lanes and a card's lines; inside
+    /// controls, wells and cards.
+    static var gap: CGFloat { GoKeys.s(8) }
+    /// Every panel's edge; a heading to what it heads.
+    static var page: CGFloat { GoKeys.s(12) }
+    /// Between sections and groups.
+    static var section: CGFloat { GoKeys.s(24) }
+    /// Round an empty list's message.
+    static var empty: CGFloat { GoKeys.s(40) }
+
+    /// The typeface for the controls and text: rows, names, buttons.
+    static let textFace = "Space Grotesk"
+    /// The typeface for the panel's labels: titles and group headings.
+    static let labelFace = "Quicksand"
+    /// The typeface for readouts: addresses, values, keys, counts.
+    static let readoutFace = "JetBrains Mono"
+
+    /// Registers the bundled fonts (all SIL OFL) with CoreText, after the
+    /// GO:KEYS panel: Quicksand for its labels, Space Grotesk for controls
+    /// and text, JetBrains Mono for readouts, VT323 for the display's dot
+    /// matrix.
     static func registerFonts() {
-        for name in ["Inter-Variable", "VT323-Regular"] {
+        for name in ["SpaceGrotesk-Variable", "Quicksand-Variable", "JetBrainsMono-Variable", "VT323-Regular"] {
             guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else { continue }
             CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
         }
@@ -60,21 +121,76 @@ extension Color {
 }
 
 extension Font {
-    /// Inter at `weight` (one variable font), at `GoKeys.scale` and scaled
-    /// with Dynamic Type relative to `style`.
-    static func inter(_ size: CGFloat, weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {
-        .custom("Inter", size: GoKeys.s(size), relativeTo: style).weight(weight)
+    /// `family` (text unless given) at `weight`, at `GoKeys.textScale` and
+    /// scaled with Dynamic Type relative to `style`.
+    static func ui(
+        _ size: CGFloat,
+        weight: Font.Weight = .regular,
+        relativeTo style: Font.TextStyle = .body,
+        family: String = GoKeys.textFace
+    ) -> Font {
+        .custom(family, size: GoKeys.t(size), relativeTo: style).weight(weight)
     }
 }
 
-/// Text roles.
+/// How big the Mac draws everything: its View menu's Text Size.
+enum TextSize: String, CaseIterable, Identifiable {
+    /// As the iPad app looks on a Mac: iPad sizes at 77%.
+    case compact
+    /// A little under the iPad's: spacing at 90%, and text at 93% so a row
+    /// is the Mac's 13 points and nothing is under 9.
+    case comfortable
+
+    /// Where it's kept.
+    static let key = "textSize"
+
+    static var saved: TextSize {
+        UserDefaults.standard.string(forKey: key).flatMap(TextSize.init(rawValue:)) ?? .comfortable
+    }
+
+    var id: Self { self }
+
+    var label: String {
+        switch self {
+        case .compact: "Compact"
+        case .comfortable: "Comfortable"
+        }
+    }
+
+    var scale: CGFloat {
+        switch self {
+        case .compact: 0.77
+        case .comfortable: 0.9
+        }
+    }
+
+    var textScale: CGFloat {
+        switch self {
+        case .compact: 0.77
+        case .comfortable: 0.93
+        }
+    }
+}
+
+/// Text roles: every piece of text is one of these.
 enum GoKeysText {
+    /// The preset's name over the lanes; a sheet's title.
+    case title
+    /// A patch name in the list; the search field.
+    case row
+    /// A part's sound on its lane; Add part.
+    case name
+    /// A group's heading: the Edit panel's groups, the list's categories.
+    case heading
     /// Small caps on controls and headings.
     case label
-    /// A patch name in the list.
-    case row
-    /// Addresses and counts, with even-width digits.
+    /// Small print in words: a category, a device's state.
     case detail
+    /// Numbers and keys read off the keyboard: an address, a value, a
+    /// count, a range.
+    case readout
+    /// The note names on the drawn keyboard.
+    case tick
     /// The display's small line.
     case displaySmall
     /// The display's patch name.
@@ -82,18 +198,24 @@ enum GoKeysText {
 
     var font: Font {
         switch self {
-        case .label: .inter(11, weight: .semibold, relativeTo: .caption).monospacedDigit()
-        case .row: .inter(14)
-        case .detail: .inter(11, relativeTo: .caption).monospacedDigit()
-        case .displaySmall: .custom("VT323-Regular", size: GoKeys.s(18), relativeTo: .callout)
-        case .displayLarge: .custom("VT323-Regular", size: GoKeys.s(30), relativeTo: .title2)
+        case .title: .ui(16, weight: .bold, relativeTo: .headline, family: GoKeys.labelFace)
+        case .row: .ui(14)
+        case .name: .ui(13, weight: .semibold, relativeTo: .subheadline)
+        case .heading: .ui(14, weight: .bold, relativeTo: .subheadline, family: GoKeys.labelFace)
+        case .label: .ui(11, weight: .semibold, relativeTo: .caption).monospacedDigit()
+        case .detail: .ui(11, relativeTo: .caption)
+        case .readout: .ui(11, relativeTo: .caption, family: GoKeys.readoutFace)
+        case .tick: .ui(10, weight: .bold, relativeTo: .caption2, family: GoKeys.labelFace)
+        case .displaySmall: .custom("VT323-Regular", size: GoKeys.t(18), relativeTo: .callout)
+        case .displayLarge: .custom("VT323-Regular", size: GoKeys.t(30), relativeTo: .title2)
         }
     }
 
     var tracking: CGFloat {
         switch self {
         case .label: 0.6
-        case .row, .detail, .displaySmall, .displayLarge: 0
+        case .title: 1.2
+        case .row, .name, .heading, .detail, .readout, .tick, .displaySmall, .displayLarge: 0
         }
     }
 }

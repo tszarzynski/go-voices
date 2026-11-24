@@ -6,6 +6,8 @@ import SwiftUI
 /// groups, with each envelope drawn above its knobs.
 struct LayersContent: View {
     let layers: LayersView
+    /// The octaves marked on the keys.
+    let ticks: [NoteTick]
     let send: (Event) -> Void
 
     private var keyboard: KeyAxis { KeyAxis(first: layers.first, last: layers.last) }
@@ -15,28 +17,33 @@ struct LayersContent: View {
             Text(status)
                 .goKeys(.row, color: GoKeys.dim)
                 .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, GoKeys.s(40))
+                .padding(.vertical, GoKeys.empty)
         } else {
-            VStack(alignment: .leading, spacing: GoKeys.s(28)) {
-                // Two cells each, on the knobs' columns.
-                ControlGrid.grid {
-                    ForEach(layers.cards, id: \.layer) { card in
-                        LayerCard(card: card, keyboard: keyboard, paste: layers.paste, send: send)
-                            .layoutValue(key: GridSlot.self, value: GridSlot(group: 0, kind: .cell(2)))
+            VStack(alignment: .leading, spacing: GoKeys.section) {
+                // Two by two, however narrow: a card fits half a sheet.
+                Grid(horizontalSpacing: GoKeys.page, verticalSpacing: GoKeys.page) {
+                    ForEach(Array(stride(from: 0, to: layers.cards.count, by: 2)), id: \.self) { row in
+                        GridRow {
+                            ForEach(layers.cards[row ..< min(row + 2, layers.cards.count)], id: \.layer) { card in
+                                LayerCard(card: card, keyboard: keyboard, paste: layers.paste, send: send)
+                            }
+                        }
                     }
                 }
                 if let wave = layers.wave {
                     WaveRow(wave: wave, send: send)
                 }
-                ControlGrid(groups: layers.groups, keyboard: keyboard, send: send)
+                ControlGrid(groups: layers.groups, keyboard: keyboard, ticks: ticks, send: send)
             }
         }
     }
 }
 
-/// One layer: its number and wave; filled red while it's the one edited,
-/// dimmed while it's off. Its buttons switch it on or off and play it alone;
-/// its menu copies it, pastes a layer copied onto it, and resets it.
+/// One layer, in a dark well: its number and level, its wave, the keys it
+/// plays as a bar, and what else limits it; the dotted outline while it's
+/// the one edited, as a selection in the lists; dimmed while it's off. Its
+/// pads switch it on or off and play it alone; its menu copies it, pastes
+/// a layer copied onto it, and resets it.
 private struct LayerCard: View {
     let card: LayerCardView
     let keyboard: KeyAxis
@@ -45,44 +52,43 @@ private struct LayerCard: View {
     let send: (Event) -> Void
 
     var body: some View {
-        let text: Color = card.selected ? .white : GoKeys.text
-        VStack(alignment: .leading, spacing: GoKeys.s(6)) {
-            HStack(spacing: GoKeys.s(6)) {
-                LedDot(color: card.on ? GoKeys.green : GoKeys.dim.opacity(0.5))
-                Text(caps: card.label).goKeys(.label, color: text)
+        VStack(alignment: .leading, spacing: GoKeys.gap) {
+            HStack(spacing: GoKeys.tight) {
+                Text(caps: card.label).goKeys(.label, color: GoKeys.dim)
                 if card.edited {
-                    Text("•").goKeys(.label, color: text)
+                    Text("•").goKeys(.label, color: GoKeys.accent)
                         .accessibilityLabel("Changed")
                 }
                 Spacer(minLength: 0)
-                Text(card.level).goKeys(.detail, color: card.selected ? .white.opacity(0.8) : GoKeys.dim)
+                Text(card.level).goKeys(.readout, color: GoKeys.dim)
                     .accessibilityLabel("Level \(card.level)")
             }
-            Text(card.wave)
-                .goKeys(.row, color: text)
-                .lineLimit(1)
-                .opacity(card.on ? 1 : 0.5)
-            KeyBar(low: Int(card.low), high: Int(card.high), keyboard: keyboard,
-                   color: card.selected ? .white : GoKeys.accent)
-                .opacity(card.on ? 1 : 0.5)
-            Text(card.detail)
-                .goKeys(.detail, color: card.selected ? .white.opacity(0.8) : GoKeys.dim)
-                .lineLimit(1)
-            HStack(spacing: 1) {
+            Group {
+                Text(card.wave).goKeys(.name).lineLimit(1)
+                KeyBar(low: Int(card.low), high: Int(card.high), keyboard: keyboard)
+                Text(card.detail).goKeys(.readout, color: GoKeys.dim)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .opacity(card.on ? 1 : GoKeys.disabled)
+            ToggleGroup {
                 Button(card.on ? "On" : "Off") { send(.toggleLayer(card.layer)) }
-                .buttonStyle(FlatButtonStyle(on: card.on, compact: true))
-                .accessibilityLabel(card.on ? "Switch \(card.label) off" : "Switch \(card.label) on")
+                    .buttonStyle(FlatButtonStyle(on: card.on, compact: true))
+                    .help(card.on ? "Switch this layer off" : "Switch this layer on")
+                    .accessibilityLabel(card.on ? "Switch \(card.label) off" : "Switch \(card.label) on")
                 Button("Solo") { send(.soloLayer(card.soloed ? nil : card.layer)) }
                     .buttonStyle(FlatButtonStyle(on: card.soloed, compact: true))
+                    .help(card.soloed ? "Play every layer again" : "Play this layer alone")
                     .accessibilityAddTraits(card.soloed ? .isSelected : [])
             }
         }
-        .padding(GoKeys.s(10))
+        .padding(GoKeys.gap)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(card.selected ? GoKeys.accent : GoKeys.panel)
-        .overlay { Rectangle().strokeBorder(GoKeys.line, lineWidth: 1) }
-        .contentShape(Rectangle())
+        .background(GoKeys.background, in: RoundedRectangle(cornerRadius: GoKeys.radius))
+        .overlay { if card.selected { DottedOutline() } }
+        .contentShape(RoundedRectangle(cornerRadius: GoKeys.radius))
         .onTapGesture { send(.selectLayer(card.layer)) }
+        .help("\(card.label): click to edit it; right-click to copy, paste or reset it")
         .contextMenu {
             Button("Copy \(card.label)") { send(.copyLayer(card.layer)) }
             Button(paste.map { "Paste \($0)" } ?? "Paste") { send(.pasteLayer(card.layer)) }
@@ -96,12 +102,12 @@ private struct LayerCard: View {
     }
 }
 
-/// Which of the keyboard's keys a layer plays, as a lit stretch of a bar.
+/// Which of the keyboard's keys a layer plays: a key-grey stretch of a
+/// dark bar, as a preset's parts in the list.
 private struct KeyBar: View {
     let low: Int
     let high: Int
     let keyboard: KeyAxis
-    let color: Color
 
     var body: some View {
         GeometryReader { proxy in
@@ -109,13 +115,13 @@ private struct KeyBar: View {
             let from = keyboard.x(keyboard.clamp(low), width: width)
             let to = keyboard.x(keyboard.clamp(high) + 1, width: width)
             ZStack(alignment: .leading) {
-                Rectangle().fill(GoKeys.line)
-                Rectangle().fill(color)
+                Capsule().fill(GoKeys.control)
+                Capsule().fill(GoKeys.keys)
                     .frame(width: max(0, to - from))
                     .offset(x: from)
             }
         }
-        .frame(height: GoKeys.s(4))
+        .frame(height: GoKeys.s(5))
         .accessibilityHidden(true)
     }
 }
@@ -127,28 +133,28 @@ private struct WaveRow: View {
     let send: (Event) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GoKeys.s(10)) {
-            HStack(spacing: GoKeys.gap) {
-                Text(caps: "Wave").goKeys(.label, color: GoKeys.dim)
-                GoKeys.line.frame(height: 1)
-            }
+        VStack(alignment: .leading, spacing: GoKeys.page) {
+            Text("Wave").goKeys(.heading)
             HStack(spacing: GoKeys.gap) {
                 ToggleGroup {
                     Button { send(.stepWave(false)) } label: { Image(systemName: "chevron.left") }
                         .buttonStyle(FlatButtonStyle())
+                        .help("Previous wave")
                         .accessibilityLabel("Previous wave")
                     Button { send(.stepWave(true)) } label: { Image(systemName: "chevron.right") }
                         .buttonStyle(FlatButtonStyle())
+                        .help("Next wave")
                         .accessibilityLabel("Next wave")
                 }
                 .fixedSize()
                 VStack(alignment: .leading, spacing: 0) {
                     Text(wave.name).goKeys(.row).lineLimit(1)
-                    Text(wave.detail).goKeys(.detail, color: GoKeys.dim).lineLimit(1)
+                    Text(wave.detail).goKeys(.readout, color: GoKeys.dim).lineLimit(1)
                 }
                 Spacer(minLength: GoKeys.gap)
                 Button("Choose…") { send(.searchWaves("")) }
                     .buttonStyle(FlatButtonStyle())
+                    .help("Choose from every wave, by name")
             }
         }
     }
@@ -180,12 +186,12 @@ struct EnvelopeShape: View {
                     path.addLine(to: CGPoint(x: 0, y: size.height))
                     path.closeSubpath()
                 }
-                .fill(GoKeys.accent.opacity(0.15))
-                line.stroke(GoKeys.accent, style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+                .fill(Pad.silver.base.opacity(0.15))
+                line.stroke(Pad.silver.base, style: StrokeStyle(lineWidth: 2, lineJoin: .round))
             }
         }
-        .padding(GoKeys.s(6))
-        .background(GoKeys.panel)
+        .padding(GoKeys.gap)
+        .background(GoKeys.background, in: RoundedRectangle(cornerRadius: GoKeys.radius))
         .accessibilityHidden(true)
     }
 }
@@ -197,43 +203,60 @@ struct WavePicker: View {
     let send: (Event) -> Void
 
     @State private var query = ""
+    @FocusState private var focused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
+            // As the keyboard sheet: its title, then Done.
             HStack {
-                Text(caps: "Waves").goKeys(.label, color: .white)
+                Text("Waves").goKeys(.title)
                 Spacer()
                 Button("Done") { send(.searchWaves(nil)) }
                     .buttonStyle(FlatButtonStyle())
                     .keyboardShortcut(.defaultAction)
             }
             .padding(GoKeys.page)
-            .background(GoKeys.panel)
-            TextField(picker.prompt, text: $query)
-                .textFieldStyle(.plain)
-                .font(GoKeysText.row.font)
-                .foregroundStyle(GoKeys.text)
-                .padding(GoKeys.s(8))
-                .background(GoKeys.control)
-                .padding(GoKeys.page)
-                .onChange(of: query) { _, query in send(.searchWaves(query)) }
+            // As the sound list's search field.
+            HStack(spacing: GoKeys.tight) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: GoKeys.t(12)))
+                    .foregroundStyle(GoKeys.dim)
+                TextField("", text: $query, prompt: Text(picker.prompt).foregroundStyle(GoKeys.dim))
+                    .textFieldStyle(.plain)
+                    .font(GoKeysText.row.font)
+                    .foregroundStyle(GoKeys.text)
+                    .autocorrectionDisabled()
+                    .focused($focused)
+                    .onChange(of: query) { _, query in send(.searchWaves(query)) }
+            }
+            .padding(.horizontal, GoKeys.gap)
+            .frame(height: GoKeys.row)
+            .background(GoKeys.background, in: RoundedRectangle(cornerRadius: GoKeys.radius))
+            .overlay {
+                RoundedRectangle(cornerRadius: GoKeys.radius)
+                    .strokeBorder(focused ? Pad.silver.base : GoKeys.line, lineWidth: 1)
+            }
+            .padding([.horizontal, .bottom], GoKeys.page)
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         if let empty = picker.empty {
-                            Text(empty).goKeys(.row, color: GoKeys.dim).padding(.vertical, GoKeys.s(40))
+                            Text(empty).goKeys(.row, color: GoKeys.dim).padding(.vertical, GoKeys.empty)
                         }
+                        // As the sound list: a row high, the one in use
+                        // outlined.
                         ForEach(picker.rows, id: \.self) { row in
                             Button { send(.setWave(group: row.group, number: row.number)) } label: {
                                 HStack {
-                                    Text(row.name).goKeys(.row, color: row.current ? .white : GoKeys.text)
+                                    Text(row.name)
+                                        .goKeys(.row, color: row.current ? GoKeys.selectedText : GoKeys.text)
+                                        .fontWeight(row.current ? .semibold : .regular)
                                     Spacer(minLength: GoKeys.gap)
-                                    Text(row.detail)
-                                        .goKeys(.detail, color: row.current ? .white.opacity(0.8) : GoKeys.dim)
+                                    Text(row.detail).goKeys(.readout, color: GoKeys.dim)
                                 }
-                                .frame(minHeight: GoKeys.s(32))
+                                .frame(height: GoKeys.row)
                                 .padding(.horizontal, GoKeys.page)
-                                .background(row.current ? GoKeys.accent : GoKeys.background)
+                                .selectedRim(row.current)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -241,13 +264,15 @@ struct WavePicker: View {
                             .accessibilityAddTraits(row.current ? .isSelected : [])
                         }
                     }
+                    .padding(.bottom, GoKeys.page)
                 }
                 .onAppear {
                     if let current = picker.rows.first(where: \.current) { proxy.scrollTo(current, anchor: .center) }
                 }
             }
         }
-        .background(GoKeys.background)
+        .background(GoKeys.panel)
+        .tint(GoKeys.accent)
         .onAppear { query = picker.query }
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 520)
@@ -273,37 +298,39 @@ extension ControlView {
     }
 }
 
-/// The selected layer's keys on a drawn keyboard, lit from its lowest to its
-/// highest. Click or drag on a key to move the nearer end there; at the
-/// keyboard's ends, a range takes in every key past them too. Double-click
-/// (or the menu) puts both ends back.
+/// The selected layer's keys, drawn as a part's on the arrangement: a
+/// silver pad over the same keyboard, its fades shading off either side.
+/// Drag an end to move it, or the middle to move both; drag from a key off
+/// the pad to bring the nearer end there. At the keyboard's ends, a range
+/// takes in every key past them too. Double-click (or the menu) puts both
+/// ends back.
 struct KeyRangeStrip: View {
     let range: KeyRangeView
     let keyboard: KeyAxis
+    let ticks: [NoteTick]
     let send: (Event) -> Void
 
-    /// The end being dragged, and the key it's on.
-    @State private var dragging: LayerControl?
-    @State private var sent: Int?
+    /// What's being dragged, and where to, while dragging.
+    @State private var dragging: (grip: RangeGrip.Grip, at: Int)?
 
-    private var first: Int { keyboard.first }
-    private var last: Int { keyboard.last }
-    private var low: Int { keyboard.clamp(Int(range.low.value)) }
-    private var high: Int { keyboard.clamp(Int(range.high.value)) }
-    private var edited: Bool { range.low.edited || range.high.edited }
-
-    private static func isBlack(_ note: Int) -> Bool { [1, 3, 6, 8, 10].contains(note % 12) }
+    private var grip: RangeGrip {
+        RangeGrip(keyboard: keyboard, low: UInt8(clamping: range.low.value), high: UInt8(clamping: range.high.value))
+    }
 
     var body: some View {
-        VStack(spacing: GoKeys.s(6)) {
+        VStack(spacing: ZoneMap.spacing) {
             GeometryReader { proxy in
-                keys(in: proxy.size)
+                band(in: proxy.size)
                     .contentShape(Rectangle())
                     .gesture(drag(in: proxy.size))
                     .simultaneousGesture(TapGesture(count: 2).onEnded(reset))
+                    .rangeCursor { grip.grab(at: $0, width: proxy.size.width) }
             }
-            Text(range.text).goKeys(.detail, color: edited ? GoKeys.text : GoKeys.dim).lineLimit(1)
+            .frame(height: ZoneMap.row)
+            KeyRuler(ticks: ticks, keyboard: keyboard)
         }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .help("The layer's keys: drag an end to set it, or the middle to move both. Double-click to put them back.")
         .contextMenu { Button("Reset keys", action: reset) }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Keys")
@@ -312,85 +339,72 @@ struct KeyRangeStrip: View {
 
     private func reset() { send(.resetLayerKeys) }
 
-    private var whites: [Int] { (first ... last).filter { !Self.isBlack($0) } }
-
-    /// The white keys side by side, the black ones over them; lit in range.
-    private func keys(in size: CGSize) -> some View {
-        let whites = whites
-        let width = size.width / CGFloat(whites.count)
+    /// The pad from the lowest key to the highest, its fades either side,
+    /// with the keys in words on it and grips at its ends.
+    private func band(in size: CGSize) -> some View {
+        let width = size.width
+        let key = keyboard.keyWidth(width)
+        let (from, to) = grip.edges(width: width)
+        let below = min(CGFloat(range.fadeLow) * key, from)
+        let above = min(CGFloat(range.fadeHigh) * key, width - to)
+        let silver = Pad.silver.base
         return ZStack(alignment: .topLeading) {
-            ForEach(Array(whites.enumerated()), id: \.element) { index, note in
-                Rectangle()
-                    .fill(Color(white: 0.82))
-                    .overlay { Rectangle().fill(GoKeys.accent.opacity(strength(note))) }
-                    .overlay(alignment: .trailing) { Rectangle().fill(GoKeys.background).frame(width: 1) }
-                    .frame(width: width, height: size.height)
-                    .offset(x: CGFloat(index) * width)
+            if below > 0 {
+                LinearGradient(colors: [silver.opacity(0), silver.opacity(0.6)], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: below, height: size.height)
+                    .offset(x: from - below)
             }
-            ForEach((first ... last).filter(Self.isBlack), id: \.self) { note in
-                Rectangle()
-                    .fill(Color(white: 0.12))
-                    .overlay { Rectangle().fill(GoKeys.accent.opacity(0.7 * strength(note))) }
-                    .frame(width: width * 0.6, height: size.height * 0.6)
-                    .offset(x: blackX(note, width: width))
+            if above > 0 {
+                LinearGradient(colors: [silver.opacity(0.6), silver.opacity(0)], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: above, height: size.height)
+                    .offset(x: to)
             }
+            ZStack(alignment: .leading) {
+                PadFill(pad: .silver)
+                Text(range.text)
+                    .goKeys(.readout, color: Pad.silver.text)
+                    .lineLimit(1)
+                    .padding(.horizontal, GoKeys.gap)
+                GripMarks(color: Pad.silver.dim)
+                // Changed from the sound's: a red rim, as a changed knob's ring.
+                if range.low.edited || range.high.edited {
+                    RoundedRectangle(cornerRadius: GoKeys.radius)
+                        .strokeBorder(GoKeys.accent, lineWidth: 2)
+                }
+            }
+            .frame(width: max(to - from, 4), height: size.height)
+            .offset(x: from)
         }
-        .frame(width: size.width, height: size.height, alignment: .topLeading)
+        .frame(width: width, height: size.height, alignment: .topLeading)
         .clipped()
-    }
-
-    /// How loud a key plays the layer, 0 to 1: full in its range, fading
-    /// over the fade widths either side.
-    private func strength(_ note: Int) -> Double {
-        let raw = (low: Int(range.low.value), high: Int(range.high.value))
-        if (raw.low ... max(raw.low, raw.high)).contains(note) { return 1 }
-        let below = Int(range.fadeLow), above = Int(range.fadeHigh)
-        if note < raw.low, below > 0, raw.low - note <= below {
-            return 1 - Double(raw.low - note) / Double(below + 1)
-        }
-        if note > raw.high, above > 0, note - raw.high <= above {
-            return 1 - Double(note - raw.high) / Double(above + 1)
-        }
-        return 0
-    }
-
-    /// A black key's left edge: across the line between its two white keys.
-    private func blackX(_ note: Int, width: CGFloat) -> CGFloat {
-        let before = whites.filter { $0 < note }.count
-        return CGFloat(before) * width - width * 0.3
-    }
-
-    /// The key under a point: a black one in the top part, else a white one.
-    private func note(at point: CGPoint, in size: CGSize) -> Int {
-        let width = size.width / CGFloat(whites.count)
-        if point.y < size.height * 0.6,
-           let black = (first ... last).filter(Self.isBlack).first(where: {
-               let x = blackX($0, width: width)
-               return point.x >= x && point.x < x + width * 0.6
-           }) {
-            return black
-        }
-        let index = min(max(Int(point.x / width), 0), whites.count - 1)
-        return whites[index]
     }
 
     private func drag(in size: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { gesture in
-                let note = note(at: gesture.location, in: size)
-                let end = dragging ?? {
-                    if note <= low { return .keyLow }
-                    if note >= high { return .keyHigh }
-                    return note - low < high - note ? .keyLow : .keyHigh
-                }()
-                dragging = end
-                guard note != sent else { return }
-                sent = note
-                send(.setLayerControl(control: end, value: Int16(note)))
+                let width = size.width
+                let held: RangeGrip.Grip
+                if let dragging {
+                    held = dragging.grip
+                } else if let found = grip.grab(at: gesture.startLocation.x, width: width) {
+                    held = found
+                } else {
+                    // Off the pad: the nearer end comes to the key.
+                    held = gesture.startLocation.x < grip.edges(width: width).from ? .low : .high
+                }
+                // Off the pad or on an end, the end comes at once; the band
+                // only once it's dragged a key.
+                if dragging == nil, case .band = held, !grip.moves(held, by: gesture.translation.width, width: width) { return }
+                let at = grip.target(held, at: gesture.location.x, moved: gesture.translation.width, width: width)
+                guard at != dragging?.at else { return }
+                dragging = (held, at)
+                switch held {
+                case .low: send(.setLayerControl(control: .keyLow, value: Int16(at)))
+                case .high: send(.setLayerControl(control: .keyHigh, value: Int16(at)))
+                // Both ends in one change, so neither holds the other back.
+                case let .band(from, to): send(.setLayerKeys(low: UInt8(from + at), high: UInt8(to + at)))
+                }
             }
-            .onEnded { _ in
-                dragging = nil
-                sent = nil
-            }
+            .onEnded { _ in dragging = nil }
     }
 }

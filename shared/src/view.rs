@@ -23,7 +23,7 @@ use crate::{
     layer::{self, LayerControl},
     layers::{self, Tab},
     part::{Control, Group},
-    parts::{self, Layout},
+    parts,
     settings::{self, Setup},
 };
 
@@ -56,12 +56,14 @@ pub struct ViewModel {
     pub empty: Option<String>,
     /// The sound picked for the part being edited.
     pub current: Option<CurrentView>,
-    /// The displays: one per part, lowest keys first, as on the keyboard.
-    pub displays: Vec<DisplayView>,
+    /// The display: the part being edited, where the next pick goes.
+    pub display: DisplayView,
     /// The parts on the zone map.
     pub layout: LayoutView,
-    /// The Edit panel, while it's showing in place of the sound list.
+    /// The Edit panel, while it's showing beside the sound list.
     pub editor: Option<EditorView>,
+    /// Settings shared by every part, while the keyboard sheet is open.
+    pub keyboard: Option<Vec<GroupView>>,
     /// The wave picker, while it's showing.
     pub waves: Option<WavePickerView>,
     /// `Channel 1`.
@@ -187,6 +189,18 @@ pub struct PresetView {
     pub current: bool,
     /// Loaded, and what's playing has changed since.
     pub edited: bool,
+    /// Its parts' keys, in part order, for a small zone map.
+    pub zones: Vec<KeysView>,
+}
+
+/// A part's keys, for a small zone map.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct KeysView {
+    /// From 0, for its colour.
+    pub part: u8,
+    /// Its lowest and highest keys (0 and 127: every key that way).
+    pub low: u8,
+    pub high: u8,
 }
 
 /// The preset recalled or saved last.
@@ -200,16 +214,12 @@ pub struct LoadedView {
     pub edited: bool,
 }
 
-/// One display: a part's sound.
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+/// The display: the part being edited's sound.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 pub struct DisplayView {
-    /// For `EditPart` and `RemovePart`, from 0.
+    /// The part, from 0.
     pub part: u8,
-    /// There are other parts: tapping it edits this one.
-    pub several: bool,
-    /// `Remove part 2`, if it can be taken away.
-    pub remove: Option<String>,
-    /// `2 · Acoustic piano`, `Acoustic piano`, `GO Voices`.
+    /// `2 · Acoustic piano`, `Acoustic piano`, `Go:Voices`.
     pub heading: String,
     /// The sound's name, or what's listed, or `—`.
     pub title: String,
@@ -217,9 +227,7 @@ pub struct DisplayView {
     pub footnote: String,
     /// Its sound, for the address and the star.
     pub sound: Option<CurrentView>,
-    /// Not the part being edited.
-    pub dimmed: bool,
-    /// The last error, on the display being edited.
+    /// The last error.
     pub status: Option<String>,
 }
 
@@ -257,8 +265,6 @@ pub struct LayoutView {
     pub can_add: bool,
     /// The octaves marked under the map: each C's key and name.
     pub ticks: Vec<NoteTick>,
-    /// For `StartLayout`.
-    pub layouts: Vec<LayoutOption>,
 }
 
 /// One part on the zone map.
@@ -274,6 +280,8 @@ pub struct ZoneView {
     pub remove: Option<String>,
     /// Its sound's name, or `—`.
     pub sound: String,
+    /// Its sound's category, `Acoustic piano`, or empty.
+    pub category: String,
     /// Its lowest and highest keys (0 and 127: every key that way).
     pub low: u8,
     pub high: u8,
@@ -292,15 +300,6 @@ pub struct NoteTick {
     pub label: String,
 }
 
-/// A way to start: one sound, a split, a layer.
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct LayoutOption {
-    /// For `StartLayout`.
-    pub layout: Layout,
-    /// `One sound`, `Split at C4`, `Layer`.
-    pub label: String,
-}
-
 /// The Edit panel: the settings of the part being edited.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct EditorView {
@@ -311,10 +310,6 @@ pub struct EditorView {
     pub groups: Vec<GroupView>,
     /// Anything in the tab showing to reset (`ResetEditor`).
     pub edited: bool,
-    /// `Whole keyboard · every part`.
-    pub keyboard_title: String,
-    /// Effects: settings shared by every part.
-    pub keyboard: Vec<GroupView>,
     /// For `ShowTab`: Sound, Layers.
     pub tabs: Vec<TabView>,
     /// In the Layers tab, the sound's layers.
@@ -566,16 +561,18 @@ pub fn view_model(model: &Model) -> ViewModel {
         count: count_text.clone(),
         empty: (listed == 0).then(|| empty_text(model)),
         current: current_view(model, model.editing()),
-        displays: displays(model, connected_any, &count_text),
+        display: display(model, connected_any, &count_text),
         layout: layout_view(model),
         editor: model.editor.then(|| editor_view(model)),
+        keyboard: model
+            .keyboard_sheet
+            .then(|| groups(model, &Control::KEYBOARD_GROUPS)),
         waves: wave_picker(model),
         channel_label: channel_label(model.channel),
         seamless: SwitchView {
             label: "Seamless switching".into(),
-            hint: "Notes you're still holding keep their sound when you pick a new one, and \
-                   the next notes play the new sound. Uses two more of the keyboard's parts. \
-                   Untested with a sustain pedal: notes held by the pedal may keep sounding."
+            hint: "Held notes keep their sound when you pick a new one. Uses two more of the \
+                   keyboard's parts; untested with a sustain pedal."
                 .into(),
             on: model.seamless,
         },
@@ -586,9 +583,7 @@ pub fn view_model(model: &Model) -> ViewModel {
                 selected: channel == model.channel,
             })
             .collect(),
-        channel_hint: "Sounds are sent on this channel. The keyboard listens on channel 1 \
-                       unless its settings were changed."
-            .into(),
+        channel_hint: "The keyboard listens on channel 1 unless its settings were changed.".into(),
         devices_hint: devices_hint(model.platform).into(),
         devices,
         bluetooth: bluetooth_view(model, found),
@@ -633,6 +628,17 @@ fn preset_views(model: &Model) -> Vec<PresetView> {
                 detail: describe(model, &preset.setup),
                 current,
                 edited: current && loaded.is_some_and(|(_, edited)| edited),
+                zones: preset
+                    .setup
+                    .parts
+                    .iter()
+                    .enumerate()
+                    .map(|(index, part)| KeysView {
+                        part: u8::try_from(index).unwrap_or_default(),
+                        low: part.low,
+                        high: part.high,
+                    })
+                    .collect(),
             }
         })
         .collect()
@@ -690,46 +696,37 @@ fn channel_label(channel: u8) -> String {
     format!("Channel {channel}")
 }
 
-/// One display per part, lowest keys first.
-fn displays(model: &Model, connected: bool, count: &str) -> Vec<DisplayView> {
-    let status = model.midi.status().map(String::from);
-    let editing = model.editing();
+/// The display: the part being edited.
+fn display(model: &Model, connected: bool, count: &str) -> DisplayView {
+    let index = model.editing();
     let several = model.parts.len() > 1;
-    by_keys(model)
-        .into_iter()
-        .map(|index| {
-            let sound = current_view(model, index);
-            let number = parts::number(index);
-            let heading = match (&sound, several) {
-                (None, false) => "GO Voices".into(),
-                (None, true) => number.to_string(),
-                (Some(sound), false) => sound.category.clone(),
-                (Some(sound), true) => format!("{number} · {}", sound.category),
-            };
-            let title = match (&sound, several) {
-                (Some(sound), _) => sound.name.clone(),
-                (None, false) => count.into(),
-                (None, true) => "—".into(),
-            };
-            let footnote = match (sound.is_some(), several, connected) {
-                (_, true, _) => keys(model, index),
-                (false, false, _) => "Tap a sound to play it on your keyboard".into(),
-                (true, false, true) => format!("Sent on channel {}", model.channel),
-                (true, false, false) => "Sent when a keyboard connects".into(),
-            };
-            DisplayView {
-                part: u8::try_from(index).unwrap_or_default(),
-                several,
-                remove: remove_label(model, index),
-                heading,
-                title,
-                footnote,
-                sound,
-                dimmed: index != editing,
-                status: (index == editing).then(|| status.clone()).flatten(),
-            }
-        })
-        .collect()
+    let sound = current_view(model, index);
+    let number = parts::number(index);
+    let heading = match (&sound, several) {
+        (None, false) => "Go:Voices".into(),
+        (None, true) => number.to_string(),
+        (Some(sound), false) => sound.category.clone(),
+        (Some(sound), true) => format!("{number} · {}", sound.category),
+    };
+    let title = match (&sound, several) {
+        (Some(sound), _) => sound.name.clone(),
+        (None, false) => count.into(),
+        (None, true) => "—".into(),
+    };
+    let footnote = match (sound.is_some(), several, connected) {
+        (_, true, _) => keys(model, index),
+        (false, false, _) => "Tap a sound to play it on your keyboard".into(),
+        (true, false, true) => format!("Sent on channel {}", model.channel),
+        (true, false, false) => "Sent when a keyboard connects".into(),
+    };
+    DisplayView {
+        part: u8::try_from(index).unwrap_or_default(),
+        heading,
+        title,
+        footnote,
+        sound,
+        status: model.midi.status().map(String::from),
+    }
 }
 
 fn control_view(model: &Model, control: Control) -> ControlView {
@@ -938,25 +935,9 @@ fn editor_view(model: &Model) -> EditorView {
         format!("{what} · {} · {sound}", part_label(model.editing()))
     };
     let layers = (model.tab == Tab::Layers).then(|| layers_view(model));
-    let groups = |groups: &[Group]| {
-        groups
-            .iter()
-            .map(|group| GroupView {
-                title: group.title.into(),
-                note: group.note.into(),
-                controls: group
-                    .controls
-                    .iter()
-                    .map(|&control| control_view(model, control))
-                    .collect(),
-                envelope: Vec::new(),
-                keys: None,
-            })
-            .collect()
-    };
     EditorView {
         title,
-        groups: groups(&Control::GROUPS),
+        groups: groups(model, &Control::GROUPS),
         edited: layers.as_ref().map_or_else(
             || {
                 Control::part_controls()
@@ -964,8 +945,6 @@ fn editor_view(model: &Model) -> EditorView {
             },
             |layers| layers.edited,
         ),
-        keyboard_title: "Whole keyboard · every part".into(),
-        keyboard: groups(&Control::KEYBOARD_GROUPS),
         tabs: [(Tab::Sound, "Sound"), (Tab::Layers, "Layers")]
             .into_iter()
             .map(|(tab, label)| TabView {
@@ -976,6 +955,24 @@ fn editor_view(model: &Model) -> EditorView {
             .collect(),
         layers,
     }
+}
+
+/// Settings in their groups.
+fn groups(model: &Model, groups: &[Group]) -> Vec<GroupView> {
+    groups
+        .iter()
+        .map(|group| GroupView {
+            title: group.title.into(),
+            note: group.note.into(),
+            controls: group
+                .controls
+                .iter()
+                .map(|&control| control_view(model, control))
+                .collect(),
+            envelope: Vec::new(),
+            keys: None,
+        })
+        .collect()
 }
 
 /// `Part 2`.
@@ -995,42 +992,40 @@ fn layout_view(model: &Model) -> LayoutView {
             .parts
             .iter()
             .enumerate()
-            .map(|(index, part)| ZoneView {
-                part: u8::try_from(index).unwrap_or_default(),
-                label: parts::number(index).to_string(),
-                title: part_label(index),
-                remove: remove_label(model, index),
-                sound: model
-                    .sound(index)
-                    .map_or_else(|| "—".into(), |patch| patch.name.clone()),
-                low: part.low,
-                high: part.high,
-                keys: go_keys::keys_text(part.low, part.high),
-                editing: index == editing,
+            .map(|(index, part)| {
+                let sound = model.sound(index);
+                ZoneView {
+                    part: u8::try_from(index).unwrap_or_default(),
+                    label: parts::number(index).to_string(),
+                    title: part_label(index),
+                    remove: remove_label(model, index),
+                    sound: sound.map_or_else(|| "—".into(), |patch| patch.name.clone()),
+                    category: sound
+                        .map(|patch| patch.category.name().into())
+                        .unwrap_or_default(),
+                    low: part.low,
+                    high: part.high,
+                    keys: go_keys::keys_text(part.low, part.high),
+                    editing: index == editing,
+                }
             })
             .collect(),
         first: go_keys::FIRST,
         last: go_keys::LAST,
         can_add: parts::can_add(model),
-        ticks: go_keys::KEYS
-            .filter(|note| note % 12 == 0)
-            .map(|note| NoteTick {
-                note,
-                label: go_keys::note_name(note),
-            })
-            .collect(),
-        layouts: [
-            (Layout::One, "One sound".into()),
-            (
-                Layout::Split,
-                format!("Split at {}", go_keys::note_name(parts::SPLIT)),
-            ),
-            (Layout::Layer, "Layer".into()),
-        ]
-        .into_iter()
-        .map(|(layout, label)| LayoutOption { layout, label })
-        .collect(),
+        ticks: ticks(),
     }
+}
+
+/// The octaves marked on a drawn keyboard: each C's key and name.
+fn ticks() -> Vec<NoteTick> {
+    go_keys::KEYS
+        .filter(|note| note % 12 == 0)
+        .map(|note| NoteTick {
+            note,
+            label: go_keys::note_name(note),
+        })
+        .collect()
 }
 
 /// The keys a part plays, and its octave shift if any: `Up to B3 · Oct −1`,
@@ -1287,12 +1282,11 @@ fn bluetooth_view(model: &Model, found: Vec<DeviceView>) -> BluetoothView {
         (Platform::Android, false) => ("Find Bluetooth MIDI keyboards nearby.", "Scan"),
         (Platform::Ios, _) => (
             "Pair a Bluetooth MIDI keyboard once; after that it connects by itself.",
-            "Pair Bluetooth keyboard…",
+            "Pair keyboard…",
         ),
         (Platform::Mac, _) => (
-            "Pair Bluetooth MIDI keyboards in Audio MIDI Setup: Window › Show MIDI Studio › \
-             Configure Bluetooth. They then appear above.",
-            "Open Audio MIDI Setup…",
+            "Pair in Audio MIDI Setup: Window › Show MIDI Studio › Configure Bluetooth.",
+            "Open MIDI Setup",
         ),
     };
     BluetoothView {

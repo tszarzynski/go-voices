@@ -265,22 +265,36 @@ pub fn toggle(model: &mut Model, layer: u8) -> Vec<u8> {
     set(model, LayerControl::Switch, i16::from(!on))
 }
 
+/// Sets the selected layer's keys, both ends in one write so neither is
+/// held back by the other: in order, and at the keyboard's ends taking in
+/// every key past them.
+pub fn set_keys(model: &mut Model, low: u8, high: u8) -> Vec<u8> {
+    let (low, high) = (low.min(high).min(127), high.max(low).min(127));
+    let (low, high) = go_keys::to_ends(low, high);
+    write_keys(model, i16::from(low), i16::from(high))
+}
+
 /// Puts the selected layer's keys back as the sound had them: both ends
 /// at once, so neither is held back by the other's changed end.
 pub fn reset_keys(model: &mut Model) -> Vec<u8> {
-    let ends = [LayerControl::KeyLow, LayerControl::KeyHigh];
-    let Some(originals) = ends
-        .iter()
-        .map(|&control| original(model, control))
-        .collect::<Option<Vec<i16>>>()
-    else {
+    match (
+        original(model, LayerControl::KeyLow),
+        original(model, LayerControl::KeyHigh),
+    ) {
+        (Some(low), Some(high)) => write_keys(model, low, high),
+        _ => Vec::new(),
+    }
+}
+
+/// Writes the selected layer's two key ends together.
+fn write_keys(model: &mut Model, low: i16, high: i16) -> Vec<u8> {
+    if !current(model).ready() {
         return Vec::new();
-    };
+    }
     let mut bytes = end_solo(model);
-    let changes: Vec<(Place, u8)> = ends
-        .iter()
-        .zip(originals)
-        .flat_map(|(&control, value)| control.bytes(model.layer, value))
+    let changes: Vec<(Place, u8)> = [(LayerControl::KeyLow, low), (LayerControl::KeyHigh, high)]
+        .into_iter()
+        .flat_map(|(control, value)| control.bytes(model.layer, value))
         .collect();
     bytes.extend(write(model, &changes));
     bytes

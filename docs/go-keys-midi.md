@@ -1,6 +1,6 @@
 # The GO:KEYS over MIDI: what we found
 
-What GO Voices relies on, and what we tried that didn't work. Most addresses come from [GO:Plus](https://github.com/waldt/goplus) (`goplus.py`). Everything marked *checked* was tried on a GO:KEYS (GO-61K) over Bluetooth MIDI from a Mac in November 2026. The code that writes these is in `shared/src/go_keys.rs` and `shared/src/part.rs`, and its tests compare the bytes with GO:Plus's own functions.
+What Go:Voices relies on, and what we tried that didn't work. Most addresses come from [GO:Plus](https://github.com/waldt/goplus) (`goplus.py`). Everything marked *checked* was tried on a GO:KEYS (GO-61K) over Bluetooth MIDI from a Mac in November 2026. The code that writes these is in `shared/src/go_keys.rs` and `shared/src/part.rs`, and its tests compare the bytes with GO:Plus's own functions.
 
 ## Connecting
 

@@ -382,7 +382,7 @@ impl Control {
             Self::CoarseTune => "Coarse",
             Self::FineTune => "Fine",
             Self::BendRange => "Bend range",
-            Self::Temperament => "Temperament",
+            Self::Temperament => "Scale", // Roland's "Scale Tune Type"
             Self::TuningKey => "Key",
         }
     }

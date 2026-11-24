@@ -182,6 +182,15 @@ pub enum Event {
     SoloLayer(Option<u8>),
     /// Edit this layer and switch it on, or off.
     ToggleLayer(u8),
+    /// Set the selected layer's lowest and highest keys (MIDI notes) at
+    /// once, as when its range is moved whole. At the keyboard's ends,
+    /// every key past them too.
+    SetLayerKeys {
+        /// Its lowest key.
+        low: u8,
+        /// Its highest key.
+        high: u8,
+    },
     /// Put the selected layer's keys back as the sound had them.
     ResetLayerKeys,
     /// Copy this layer, to paste onto another.
@@ -201,6 +210,11 @@ pub enum Event {
     SearchWaves(Option<String>),
     /// Show the Edit panel in place of the sound list, or hide it.
     ToggleEditor,
+    /// Opens the Edit panel on part `0` (from 0), whether it was open or
+    /// not.
+    OpenEditor(u8),
+    /// Open the keyboard sheet, or close it.
+    ShowKeyboard(bool),
     /// Change a setting: of the part being edited, or of the whole
     /// keyboard.
     SetControl {
@@ -290,6 +304,9 @@ pub struct Model {
     pub(crate) system: Edits,
     /// The Edit panel is showing.
     pub(crate) editor: bool,
+    /// Whether the keyboard sheet is open: its settings are only built
+    /// while it is.
+    pub(crate) keyboard_sheet: bool,
     /// Its tab.
     pub(crate) tab: Tab,
     /// The layer the Layers tab edits, 0–3.
@@ -330,6 +347,7 @@ impl Default for Model {
             editing: 0,
             system: Edits::new(),
             editor: false,
+            keyboard_sheet: false,
             tab: Tab::Sound,
             layer: 0,
             solo: None,
@@ -449,7 +467,7 @@ impl Model {
     }
 }
 
-/// GO Voices: the GO:KEYS sounds, browsed and sent over MIDI.
+/// Go:Voices: the GO:KEYS sounds, browsed and sent over MIDI.
 #[derive(Default)]
 pub struct GoVoices;
 
@@ -483,11 +501,7 @@ impl App for GoVoices {
                 model.refresh();
                 render()
             }
-            Event::Open(place) => {
-                model.filters.place = place;
-                model.refresh();
-                render()
-            }
+            Event::Open(place) => open(model, place),
             Event::Select(id) => select(model, id as usize),
             Event::Next | Event::Previous if model.filters.place == Place::Presets => {
                 step_presets(model, event == Event::Next)
@@ -518,6 +532,8 @@ impl App for GoVoices {
             | Event::DeletePreset(_) => edit_presets(model, event),
             Event::EditPart(_)
             | Event::ToggleEditor
+            | Event::OpenEditor(_)
+            | Event::ShowKeyboard(_)
             | Event::ShowTab(_)
             | Event::SelectLayer(_)
             | Event::SoloLayer(_)
@@ -528,6 +544,7 @@ impl App for GoVoices {
             | Event::ResetLayers(_)
             | Event::PasteLayer(_)
             | Event::ToggleLayer(_)
+            | Event::SetLayerKeys { .. }
             | Event::ResetLayerKeys
             | Event::StepWave(_)
             | Event::SetWave { .. } => edit_layers(model, &event),
@@ -878,6 +895,13 @@ fn commit(model: &mut Model, bytes: &[u8]) -> Command<Effect, Event> {
         .and(render())
 }
 
+/// Lists `place`.
+fn open(model: &mut Model, place: Place) -> Command<Effect, Event> {
+    model.filters.place = place;
+    model.refresh();
+    render()
+}
+
 /// After a change only of what's shown: sends these bytes (if any), asks
 /// for the sound the Layers tab shows if it needs reading, and redraws.
 fn look(model: &mut Model, mut bytes: Vec<u8>) -> Command<Effect, Event> {
@@ -889,9 +913,10 @@ fn look(model: &mut Model, mut bytes: Vec<u8>) -> Command<Effect, Event> {
 /// ends when the panel shows something else.
 fn show(model: &mut Model, event: Event) -> Command<Effect, Event> {
     let bytes = match event {
-        Event::EditPart(part) => {
+        Event::EditPart(part) | Event::OpenEditor(part) => {
             let bytes = layers::end_solo(model);
             model.editing = usize::from(part).min(model.parts.len() - 1);
+            model.editor |= matches!(event, Event::OpenEditor(_));
             bytes
         }
         Event::ToggleEditor => {
@@ -903,6 +928,10 @@ fn show(model: &mut Model, event: Event) -> Command<Effect, Event> {
             let bytes = layers::end_solo(model);
             model.tab = tab;
             bytes
+        }
+        Event::ShowKeyboard(open) => {
+            model.keyboard_sheet = open;
+            Vec::new()
         }
         Event::SelectLayer(layer) => {
             model.layer = layer.min(layer::LAYERS - 1);
@@ -930,6 +959,7 @@ fn edit_layers(model: &mut Model, event: &Event) -> Command<Effect, Event> {
         Event::ResetLayers(layer) => layers::reset_layers(model, layer),
         Event::PasteLayer(layer) => layers::paste(model, layer),
         Event::ToggleLayer(layer) => layers::toggle(model, layer),
+        Event::SetLayerKeys { low, high } => layers::set_keys(model, low, high),
         Event::ResetLayerKeys => layers::reset_keys(model),
         Event::StepWave(forward) => layers::step_wave(model, forward),
         Event::SetWave { group, number } => layers::set_wave(model, group, number),

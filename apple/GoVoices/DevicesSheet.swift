@@ -1,68 +1,87 @@
 import App
 import SwiftUI
 
-/// The keyboards: connect and disconnect them, and pair a Bluetooth one.
+/// The keyboard: connect and disconnect keyboards, the channel, seamless
+/// switching, the effects every part shares, and pairing a Bluetooth one.
 struct DevicesSheet: View {
     let view: ViewModel
     let send: (Event) -> Void
     let done: () -> Void
 
+    #if os(iOS)
+    private enum Page: Identifiable {
+        case help, about
+        var id: Self { self }
+    }
+
+    /// Help or About, over the sheet.
+    @State private var showing: Page?
+    #endif
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("KEYBOARDS")
-                    .font(.inter(13, weight: .heavy))
-                    .tracking(1.5)
-                    .foregroundStyle(.white)
+                Text("Keyboard").goKeys(.title)
                 Spacer()
                 Button("Done", action: done)
                     .buttonStyle(FlatButtonStyle())
                     .keyboardShortcut(.defaultAction)
             }
-            .padding(.horizontal, GoKeys.page)
-            .padding(.vertical, GoKeys.s(8))
-            .background(GoKeys.panel)
-            .overlay(alignment: .bottom) { GoKeys.line.frame(height: 1) }
+            .padding(GoKeys.page)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: GoKeys.gap) {
+                VStack(alignment: .leading, spacing: GoKeys.section) {
                     if let status = view.status {
                         Display { StatusLine(status: status) { send(.dismissStatus) } }
                     }
-
-                    Heading(text: "Keyboards")
-                    if view.devices.isEmpty {
-                        Text(view.devicesHint).goKeys(.row, color: GoKeys.dim)
-                    }
-                    ForEach(view.devices, id: \.id) { device in
-                        DeviceRow(device: device) { send(.toggleDevice(deviceId: device.id)) }
-                    }
-
-                    Heading(text: "MIDI channel").padding(.top, GoKeys.gap)
-                    Text(view.channelHint).goKeys(.row, color: GoKeys.dim)
-                    ChannelMenu(view: view, send: send)
-
-                    Heading(text: view.seamless.label).padding(.top, GoKeys.gap)
-                    Text(view.seamless.hint).goKeys(.row, color: GoKeys.dim)
-                        .fixedSize(horizontal: false, vertical: true)
-                    ToggleGroup {
-                        ForEach([false, true], id: \.self) { on in
-                            Button(on ? "On" : "Off") { send(.setSeamless(on)) }
-                                .buttonStyle(FlatButtonStyle(on: view.seamless.on == on))
-                                .accessibilityAddTraits(view.seamless.on == on ? .isSelected : [])
+                    // Each section: its heading beside its control, then a
+                    // short line on what it does.
+                    Section(title: "Keyboards", hint: view.devices.isEmpty ? view.devicesHint : nil) {
+                        VStack(spacing: GoKeys.tight) {
+                            ForEach(view.devices, id: \.id) { device in
+                                DeviceRow(device: device) { send(.toggleDevice(deviceId: device.id)) }
+                            }
                         }
                     }
-                    .fixedSize()
-
-                    Heading(text: "Bluetooth").padding(.top, GoKeys.gap)
-                    Text(view.bluetooth.hint).goKeys(.row, color: GoKeys.dim)
-                    ForEach(view.bluetooth.found, id: \.id) { device in
-                        DeviceRow(device: device) { send(.toggleDevice(deviceId: device.id)) }
+                    Section(title: "MIDI channel", hint: view.channelHint) {
+                        ChannelMenu(view: view, send: send).fixedSize()
                     }
-                    Button(view.bluetooth.action) {
-                        send(view.bluetooth.scanning ? .stopBluetoothScan : .startBluetoothScan)
+                    Section(title: view.seamless.label, hint: view.seamless.hint) {
+                        Button(view.seamless.on ? "On" : "Off") { send(.setSeamless(!view.seamless.on)) }
+                            .buttonStyle(FlatButtonStyle(on: view.seamless.on))
+                            .help("\(view.seamless.label): click to switch")
+                            .accessibilityLabel(view.seamless.label)
+                            .accessibilityValue(view.seamless.on ? "On" : "Off")
                     }
-                    .buttonStyle(FlatButtonStyle(on: view.bluetooth.scanning))
+                    ForEach(view.keyboard ?? [], id: \.title) { group in
+                        Section(title: group.title, hint: group.note.isEmpty ? nil : group.note) {
+                            EmptyView()
+                        }
+                        ControlGrid(groups: [group], bare: true, send: send)
+                    }
+                    Section(title: "Bluetooth", hint: view.bluetooth.hint) {
+                        VStack(alignment: .leading, spacing: GoKeys.tight) {
+                            ForEach(view.bluetooth.found, id: \.id) { device in
+                                DeviceRow(device: device) { send(.toggleDevice(deviceId: device.id)) }
+                            }
+                            Button(view.bluetooth.action) {
+                                send(view.bluetooth.scanning ? .stopBluetoothScan : .startBluetoothScan)
+                            }
+                            .buttonStyle(FlatButtonStyle(on: view.bluetooth.scanning))
+                        }
+                    }
+                    #if os(iOS)
+                    // The Mac has these in its menus.
+                    Section(title: "Go:Voices", hint: nil) {
+                        ToggleGroup {
+                            Button("Help") { showing = .help }
+                                .buttonStyle(FlatButtonStyle())
+                            Button("About") { showing = .about }
+                                .buttonStyle(FlatButtonStyle())
+                        }
+                        .fixedSize()
+                    }
+                    #endif
                 }
                 .padding(GoKeys.page)
             }
@@ -70,16 +89,41 @@ struct DevicesSheet: View {
         .background(GoKeys.panel)
         .tint(GoKeys.accent)
         #if os(macOS)
-        .frame(minWidth: 440, minHeight: 360)
+        .frame(minWidth: 520, minHeight: 420)
+        #else
+        .sheet(item: $showing) { page in
+            switch page {
+            case .help: HelpView()
+            case .about: AboutView()
+            }
+        }
         #endif
     }
 }
 
-private struct Heading: View {
-    let text: String
+/// One section of the sheet: its heading on the left, its control on the
+/// right, and its hint, dim and short, under them.
+private struct Section<Content: View>: View {
+    let title: String
+    let hint: String?
+    @ViewBuilder let content: Content
+
+    /// The headings' column: wide enough for the longest.
+    private static var headingWidth: CGFloat { GoKeys.s(190) }
 
     var body: some View {
-        Text(caps: text).goKeys(.label, color: GoKeys.dim)
+        VStack(alignment: .leading, spacing: GoKeys.tight) {
+            HStack(alignment: .firstTextBaseline, spacing: GoKeys.gap) {
+                Text(title).goKeys(.heading)
+                    .frame(width: Self.headingWidth, alignment: .leading)
+                content
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if let hint {
+                Text(hint).goKeys(.detail, color: GoKeys.dim)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
 
@@ -99,9 +143,9 @@ private struct DeviceRow: View {
             Button(device.action, action: toggle)
                 .buttonStyle(FlatButtonStyle(on: device.state == .connected))
         }
-        .padding(.horizontal, GoKeys.s(10))
-        .padding(.vertical, GoKeys.s(8))
-        .background(GoKeys.background)
+        .padding(.horizontal, GoKeys.gap)
+        .frame(minHeight: GoKeys.row)
+        .background(GoKeys.background, in: RoundedRectangle(cornerRadius: GoKeys.radius))
     }
 }
 

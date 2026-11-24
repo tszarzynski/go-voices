@@ -1,4 +1,4 @@
-//! GO Voices' Crux core: browse, search and pick the sounds of a Roland
+//! Go:Voices' Crux core: browse, search and pick the sounds of a Roland
 //! GO:KEYS, and send the pick to the keyboard over MIDI. Shared by every
 //! shell; the Apple one is in `apple/`.
 //!
@@ -35,8 +35,8 @@ pub use layers::Tab;
 pub use parts::Layout;
 pub use view::{
     BankNode, BluetoothView, ChannelOption, ChoiceView, ConnectionView, ControlView, CurrentView,
-    DeviceState, DeviceView, DisplayView, EditorView, GroupView, KeyRangeView, LayerCardView,
-    LayersView, LayoutOption, LayoutView, LoadedView, NoteTick, PlaceView, PointView, PresetView,
+    DeviceState, DeviceView, DisplayView, EditorView, GroupView, KeyRangeView, KeysView,
+    LayerCardView, LayersView, LayoutView, LoadedView, NoteTick, PlaceView, PointView, PresetView,
     RowView, SectionView, Setting, SwitchView, TabView, ViewModel, WavePickerView, WaveRowView,
     WaveView, ZoneView,
 };
