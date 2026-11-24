@@ -1,0 +1,36 @@
+# Formatting, lints and tests of the Rust core on every push and pull
+# request, and the core's no_std build. On Linux: quicker than a Mac
+# runner, and the core doesn't need one. The Mac app is built by
+# mac-app.yml.
+name: Checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust (from rust-toolchain.toml)
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just,cargo-nextest
+
+      - name: Format, lints and tests
+        run: just
+
+      - name: No std
+        run: just check-nostd

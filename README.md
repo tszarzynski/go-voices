@@ -67,7 +67,7 @@ just apple open      # generate, then open in Xcode
 just import-sounds   # regenerate the catalogue (needs GO:Plus cloned next to this repo)
 ```
 
-CI (`.github/workflows/mac-app.yml`) runs the checks and tests and builds the Mac app on every push to `main`; tagging `vX.Y.Z` also publishes it as a release.
+CI: `.github/workflows/checks.yml` runs `just` (formatting, lints, tests) and the `no_std` build on every push and pull request; `.github/workflows/mac-app.yml` builds the Mac app on every push to `main`, and tagging `vX.Y.Z` also publishes it as a release.
 
 The Xcode project, the Swift packages and the generated types aren't committed: `just apple build` (or `just apple open`) makes them.
 

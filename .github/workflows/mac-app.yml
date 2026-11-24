@@ -1,6 +1,6 @@
 # Builds the Mac app for testers: on every push to main (a workflow
 # artifact, for those signed in to GitHub) and for each v* tag (a GitHub
-# release anyone can download).
+# release anyone can download). The tests run in checks.yml.
 #
 # The app is ad-hoc signed, not notarised (that needs a paid Apple
 # Developer account), so macOS asks testers to allow it once: see the
@@ -39,15 +39,12 @@ jobs:
 
       - uses: taiki-e/install-action@v2
         with:
-          tool: just,cargo-nextest
+          tool: just
 
       - name: XcodeGen and BoltFFI
         run: |
           brew install xcodegen
           command -v boltffi || cargo install boltffi_cli@0.30.1 --locked
-
-      - name: Checks and tests
-        run: just
 
       - name: Version
         id: version
