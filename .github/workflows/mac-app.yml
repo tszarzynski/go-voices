@@ -22,10 +22,11 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-26
+    # macos-15: more runners free than macos-26, and its Xcode builds the app.
+    runs-on: macos-15
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -88,7 +89,7 @@ jobs:
           ditto -c -k --keepParent apple/build/Build/Products/Release/GoVoices.app "$name"
           echo "name=$name" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ${{ steps.zip.outputs.name }}
           path: ${{ steps.zip.outputs.name }}
