@@ -236,8 +236,8 @@ checksum = "32b13ea120a812beba79e34316b3942a857c86ec1593cb34f27bb28272ce2cca"
 
 [[package]]
 name = "crux-midi"
-version = "0.1.0"
-source = "git+https://github.com/tszarzynski/crux-midi?tag=v0.1.0#5dd5a1afb6275ddeed4e865c7eef2e6d53198ad0"
+version = "0.1.1"
+source = "git+https://github.com/tszarzynski/crux-midi?tag=v0.1.1#45d00c23ab0479f4686c1e44cf11edc489ad5bc3"
 dependencies = [
  "crux_core",
  "facet",

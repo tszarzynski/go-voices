@@ -214,7 +214,7 @@ go-voices/
   - Unused view fields, the `futures` dependency and `Wave::is_left` removed; the envelope graph found by its controls, not its title; one patch lookup without allocating; the Sound tab's groups only built on that tab
   - Swift: one search box, sheet header and empty message; the sound list redrawn only when it changes; wave rows by wave; ⌘← ⌘→ left to the search field while typing; ⌘= for Bigger; font and CoreMIDI failures logged; Help worded per platform with every shortcut; tokens and sizes in `Theme.swift`
 - [x] Idiomatic Rust pass before the first release: `commit` takes its bytes, iterator and `let … else` forms, `Patch::bank` returns an `Option` (no panic), waves found by binary search (order tested), no needless allocations, every public field documented {#rust-style}
-- [ ] crux-midi 0.1.1 (`toggle`/`forget` take `impl Into<String>`): committed locally, waiting on the go-ahead to tag and push {#crux-midi-0-1-1}
+- [x] crux-midi 0.1.1 (`toggle`/`forget` take `impl Into<String>`), tagged and pushed; go-voices on it {#crux-midi-0-1-1}
 - [ ] First CI run passes on GitHub's runner {#ci-mac-check}
 - [ ] The person checks the new layout on Mac and iPhone {#ui-check}
 
