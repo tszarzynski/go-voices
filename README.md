@@ -6,6 +6,16 @@ Browse, search and pick any of the ~1,380 sounds a Roland GO:KEYS can play over 
 
 The sound list comes from [GO:Plus](https://github.com/waldt/goplus)'s `GO-sounds.md` (see [Acknowledgements](#acknowledgements)). Selecting a sound sends bank select (CC 0 / CC 32) and a program change on the chosen channel (default 1).
 
+## Download (Mac)
+
+Test builds are on the [Releases](https://github.com/tszarzynski/go-voices/releases) page (for each tagged version), and in the [Mac app workflow](https://github.com/tszarzynski/go-voices/actions/workflows/mac-app.yml)'s runs for every push to `main` (signed in to GitHub). They run on Apple silicon and Intel Macs with macOS 15 or later.
+
+They aren't notarised by Apple, so macOS blocks the app the first time. Unzip it, move **GoVoices** to Applications and open it once, then in System Settings › Privacy & Security choose **Open Anyway**. Or, in Terminal:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/GoVoices.app
+```
+
 ## What it does
 
 - **Browse and search** the sounds by bank and category, with favourites and recents. − / + step through the list.
@@ -56,6 +66,8 @@ just apple build     # Swift types, BoltFFI package, Xcode project, Mac + iOS si
 just apple open      # generate, then open in Xcode
 just import-sounds   # regenerate the catalogue (needs GO:Plus cloned next to this repo)
 ```
+
+CI (`.github/workflows/mac-app.yml`) runs the checks and tests and builds the Mac app on every push to `main`; tagging `vX.Y.Z` also publishes it as a release.
 
 The Xcode project, the Swift packages and the generated types aren't committed: `just apple build` (or `just apple open`) makes them.
 

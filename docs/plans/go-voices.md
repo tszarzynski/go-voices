@@ -205,6 +205,8 @@ go-voices/
 - [x] About and Help: windows from the Mac's menus (⌘?), pads at the bottom of the keyboard sheet on iOS {#help}
 - [x] Review fixes: keyboard sheet opens after the Edit sheet on iPhone (sheet state in the core, built only while open); a tap on a lane wobbling a little stays a tap; a layer's changed keys rimmed red; layer cards two by two at any width; a layer's band moved in one `SetLayerKeys`; one copy of the octave marks; `EditPart`/`OpenEditor` share a branch; Back to One Sound in the preset menu; iPhone portrait only {#review-2}
 - [x] Text size on the Mac: View › Text Size, Comfortable (0.9× spacing, 0.93× text) or Compact (0.77×, as the iPad app on a Mac); kept between launches {#text-size}
+- [x] CI: GitHub Actions builds the Mac app (universal, ad-hoc signed; no paid developer account, so not notarised) on pushes to main as an artifact, and as a release for v* tags; README explains opening it {#ci-mac}
+- [ ] First CI run passes on GitHub's runner {#ci-mac-check}
 - [ ] The person checks the new layout on Mac and iPhone {#ui-check}
 
 ### Review

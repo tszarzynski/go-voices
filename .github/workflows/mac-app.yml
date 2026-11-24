@@ -1,0 +1,115 @@
+# Builds the Mac app for testers: on every push to main (a workflow
+# artifact, for those signed in to GitHub) and for each v* tag (a GitHub
+# release anyone can download).
+#
+# The app is ad-hoc signed, not notarised (that needs a paid Apple
+# Developer account), so macOS asks testers to allow it once: see the
+# README's "Download".
+name: Mac app
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # to publish releases from tags
+
+concurrency:
+  group: mac-app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Rust (from rust-toolchain.toml)
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just,cargo-nextest
+
+      - name: XcodeGen and BoltFFI
+        run: |
+          brew install xcodegen
+          command -v boltffi || cargo install boltffi_cli@0.30.1 --locked
+
+      - name: Checks and tests
+        run: just
+
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "marketing=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "marketing=$(sed -n 's/.*MARKETING_VERSION: \([0-9.]*\).*/\1/p' apple/project.yml)" >> "$GITHUB_OUTPUT"
+          fi
+          echo "build=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      # As `just apple generate`, with the Rust library built for release.
+      - name: Swift types, Rust package, Xcode project
+        working-directory: apple
+        run: |
+          just install-targets
+          just typegen
+          (cd ../shared_ffi && rm -rf ../apple/generated/Shared && boltffi pack apple --release)
+          xcodegen
+
+      - name: Build (universal, ad-hoc signed)
+        working-directory: apple
+        run: |
+          xcodebuild \
+            -project GoVoices.xcodeproj \
+            -scheme GoVoices-macOS \
+            -configuration Release \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" \
+            MARKETING_VERSION="${{ steps.version.outputs.marketing }}" \
+            CURRENT_PROJECT_VERSION="${{ steps.version.outputs.build }}" \
+            build
+          codesign --verify --deep --strict build/Build/Products/Release/GoVoices.app
+
+      - name: Zip
+        id: zip
+        run: |
+          name="Go-Voices-${{ steps.version.outputs.marketing }}-${{ steps.version.outputs.build }}-mac.zip"
+          ditto -c -k --keepParent apple/build/Build/Products/Release/GoVoices.app "$name"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.zip.outputs.name }}
+          path: ${{ steps.zip.outputs.name }}
+          retention-days: 30
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.zip.outputs.name }}
+          generate_release_notes: true
+          prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
+          body: |
+            Go:Voices for the Mac (Apple silicon and Intel, macOS 15 or later), for testing.
+
+            It isn't notarised, so macOS blocks it the first time. To open it:
+            1. Unzip it and move **GoVoices** to Applications.
+            2. Open it once; when macOS says it can't check it, close the message.
+            3. In System Settings › Privacy & Security, choose **Open Anyway** next to GoVoices, and confirm.
+
+            Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/GoVoices.app`
