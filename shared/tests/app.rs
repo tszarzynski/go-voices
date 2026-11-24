@@ -5,8 +5,8 @@ use std::collections::BTreeMap;
 
 use crux_core::{Core, Request};
 use shared::{
-    Bank, Category, ControlView, Effect, Event, GoVoices, LayersView, Layout, Place, Platform,
-    Setting, Tab, ViewModel,
+    Bank, Category, ControlView, Effect, Event, GoVoices, LayersStatus, LayersView, Layout,
+    PasteView, Place, Platform, Setting, Tab, ViewModel,
     go_keys::{self, Zone},
     layer::LayerControl,
     midi::{ConnectMidi, Connection, MidiDevice, MidiDevices, Transport, WatchDevices},
@@ -170,19 +170,15 @@ fn selecting_sends_bank_select_and_program_change() {
     let piano = shell.id_of("JUNO Piano 1");
     shell.send(Event::Select(piano));
     assert_eq!(shell.sent, [("go".to_string(), JUNO_PIANO_ON_1.to_vec())]);
-    let view = shell.view();
-    let current = view.current.unwrap();
+    let display = shell.view().display;
+    assert_eq!((display.part, display.several), (1, false));
+    let current = display.sound.unwrap();
     assert_eq!(current.name, "JUNO Piano 1");
-    assert_eq!(current.address, "87·64·004");
-    let display = &view.display;
-    assert_eq!(display.heading, "Acoustic piano");
-    assert_eq!(display.title, "JUNO Piano 1");
     assert_eq!(
         (current.category.as_str(), current.bank.as_str()),
         ("Acoustic piano", "JUNO-DS")
     );
     assert_eq!(current.address, "87·64·004");
-    assert_eq!(view.display.footnote, "Sent on channel 1");
 }
 
 #[test]
@@ -198,7 +194,7 @@ fn sends_on_the_chosen_channel_and_resends_when_it_changes() {
         shell.sent,
         [("go".to_string(), vec![0xB3, 0, 87, 0xB3, 32, 64, 0xC3, 3])]
     );
-    assert_eq!(shell.view().channel_label, "Channel 4");
+    assert_eq!(shell.view().channel, 4);
 
     shell.sent.clear();
     shell.send(Event::SetChannel(17));
@@ -212,10 +208,6 @@ fn a_pick_made_while_disconnected_is_sent_once_a_keyboard_connects() {
     let piano = shell.id_of("JUNO Piano 1");
     shell.send(Event::Select(piano));
     assert_eq!(shell.sent, []);
-    assert_eq!(
-        shell.view().display.footnote,
-        "Sent when a keyboard connects"
-    );
 
     shell.connect_keyboard();
     assert_eq!(shell.sent.len(), 1);
@@ -311,12 +303,12 @@ fn next_and_previous_step_through_the_list_and_wrap() {
     assert!(ids.len() > 2);
 
     shell.send(Event::Next);
-    assert_eq!(shell.view().current.unwrap().id, ids[0]);
+    assert_eq!(shell.view().display.sound.unwrap().id, ids[0]);
     shell.send(Event::Next);
-    assert_eq!(shell.view().current.unwrap().id, ids[1]);
+    assert_eq!(shell.view().display.sound.unwrap().id, ids[1]);
     shell.send(Event::Previous);
     shell.send(Event::Previous);
-    assert_eq!(shell.view().current.unwrap().id, *ids.last().unwrap());
+    assert_eq!(shell.view().display.sound.unwrap().id, *ids.last().unwrap());
 }
 
 #[test]
@@ -356,8 +348,7 @@ fn settings_survive_a_relaunch() {
     assert_eq!(saved.channel, 3);
 
     let mut relaunched = Shell::with_settings(Some(saved));
-    assert_eq!(relaunched.view().channel_label, "Channel 3");
-    assert!(relaunched.view().channels[2].selected);
+    assert_eq!(relaunched.view().channel, 3);
     relaunched.send(Event::Open(Place::Favourites));
     assert_eq!(relaunched.listed(), [grand]);
     relaunched.send(Event::Open(Place::Recent));
@@ -365,7 +356,10 @@ fn settings_survive_a_relaunch() {
 
     // The sound playing comes back, and goes to the keyboard when it
     // connects.
-    assert_eq!(relaunched.view().current.unwrap().name, "JUNO Piano 1");
+    assert_eq!(
+        relaunched.view().display.sound.unwrap().name,
+        "JUNO Piano 1"
+    );
     relaunched.connect_keyboard();
     assert_eq!(relaunched.sent.len(), 1);
     assert!(
@@ -524,8 +518,13 @@ fn splitting_sends_both_parts_and_the_keys_then_picks_the_lower_one() {
         [("From C4", false), ("Up to B3", true)],
         "the lower part is next"
     );
-    assert_eq!(view.display.part, 1, "the part being edited");
-    assert_eq!(view.display.heading, "2 · Acoustic piano");
+    let display = &view.display;
+    assert_eq!(
+        (display.part, display.several),
+        (2, true),
+        "the part being edited"
+    );
+    assert_eq!(display.sound.as_ref().unwrap().category, "Acoustic piano");
 
     // A pick now changes the lower part only, written to part 2.
     shell.sent.clear();
@@ -540,11 +539,10 @@ fn splitting_sends_both_parts_and_the_keys_then_picks_the_lower_one() {
         )]
     );
     let view = shell.view();
-    assert_eq!(view.current.unwrap().name, "88StageGrand");
-    assert_eq!(view.display.title, "88StageGrand");
-    assert_eq!(view.display.footnote, "Up to B3");
+    assert_eq!(view.display.sound.unwrap().name, "88StageGrand");
+    assert_eq!(view.display.keys, "Up to B3");
     let upper = display_for(&mut shell, "JUNO Piano 1");
-    assert_eq!(upper.footnote, "From C4");
+    assert_eq!(upper.keys, "From C4");
 
     // Part 1 again: a program change on the channel, and part 1.
     shell.sent.clear();
@@ -566,7 +564,7 @@ fn layering_and_going_back_to_one_sound() {
     keys.extend(go_keys::zone(2, Zone::FULL));
     keys.extend(off_from(3));
     assert!(layered.ends_with(&keys));
-    assert_eq!(shell.view().display.footnote, "All keys");
+    assert_eq!(shell.view().display.keys, "All keys");
 
     shell.sent.clear();
     shell.send(Event::StartLayout(Layout::One));
@@ -575,8 +573,7 @@ fn layering_and_going_back_to_one_sound() {
     assert!(shell.sent[0].1.ends_with(&keys));
     let view = shell.view();
     assert_eq!(view.layout.zones.len(), 1);
-    assert_eq!(view.display.part, 0);
-    assert!(!view.display.heading.starts_with("1 ·"), "no part number");
+    assert_eq!((view.display.part, view.display.several), (1, false));
 }
 
 #[test]
@@ -621,7 +618,7 @@ fn each_part_s_keys_move_on_their_own_and_octave_resends_them() {
         ]
     );
     let view = shell.view();
-    assert_eq!(view.display.footnote, "Up to F#3 · Oct −1");
+    assert_eq!(view.display.keys, "Up to F#3 · Oct −1");
     assert_eq!(view.layout.zones[0].keys, "From C4");
 
     // The upper part down to C3: layered with the lower one from C3 to
@@ -681,9 +678,9 @@ fn the_split_survives_a_relaunch() {
 
     let mut relaunched = Shell::with_settings(Some(saved));
     let lower = display_for(&mut relaunched, "88StageGrand");
-    assert_eq!(lower.footnote, "Up to B2 · Oct +1");
+    assert_eq!(lower.keys, "Up to B2 · Oct +1");
     let upper = display_for(&mut relaunched, "JUNO Piano 1");
-    assert_eq!(upper.footnote, "From C4", "its own keys, as they were");
+    assert_eq!(upper.keys, "From C4", "its own keys, as they were");
 }
 
 #[test]
@@ -964,9 +961,9 @@ fn a_part_added_splits_the_part_being_edited_and_one_removed_gives_its_keys_back
         layout
             .zones
             .iter()
-            .map(|z| (z.label.as_str(), z.keys.as_str(), z.editing))
+            .map(|z| (z.part, z.keys.as_str(), z.editing))
             .collect::<Vec<_>>(),
-        [("1", "Up to F4", false), ("2", "From F#4", true)]
+        [(0, "Up to F4", false), (1, "From F#4", true)]
     );
 
     // Up to four, then no more.
@@ -1003,13 +1000,11 @@ fn seamless() -> Shell {
 #[test]
 fn seamless_switching_is_off_until_turned_on_and_kept() {
     let mut shell = Shell::with_settings(None);
-    let switch = shell.view().seamless;
-    assert_eq!(switch.label, "Seamless switching");
-    assert!(!switch.on);
+    assert!(!shell.view().seamless);
     shell.send(Event::SetSeamless(true));
-    assert!(shell.view().seamless.on);
+    assert!(shell.view().seamless);
     let relaunched = Shell::with_settings(shell.saved.clone());
-    assert!(relaunched.view().seamless.on);
+    assert!(relaunched.view().seamless);
 }
 
 #[test]
@@ -1047,6 +1042,33 @@ fn seamless_switching_plays_a_new_sound_on_the_spare_part() {
         contains(bytes, &go_keys::setting(Scope::Part(1), Control::Level, 80)),
         "the level follows the sound"
     );
+}
+
+#[test]
+fn seamless_switching_keeps_spares_quiet_as_parts_come_and_go() {
+    let mut shell = seamless();
+    let piano = shell.id_of("JUNO Piano 1");
+    shell.send(Event::Select(piano)); // part 1 now sounds on its spare, 5
+
+    // Added: the new part plays on part 2, and its spare (6) stays off.
+    shell.sent.clear();
+    shell.send(Event::AddPart);
+    let bytes = &shell.sent[0].1;
+    assert!(contains(bytes, &go_keys::zone(6, Zone::OFF)));
+    assert!(bytes.starts_with(&go_keys::part_patch(2, &patch("JUNO Piano 1"))));
+
+    // Part 1 removed: part 2 becomes part 1 and takes every key; nothing
+    // is left sounding on 2, 5 or 6.
+    shell.sent.clear();
+    shell.send(Event::RemovePart(0));
+    let bytes = &shell.sent[0].1;
+    assert!(contains(bytes, &go_keys::zone(1, Zone::FULL)));
+    for quiet in [2, 5, 6] {
+        assert!(
+            contains(bytes, &go_keys::zone(quiet, Zone::OFF)),
+            "part {quiet} off"
+        );
+    }
 }
 
 #[test]
@@ -1240,6 +1262,24 @@ fn presets_are_kept_renamed_updated_and_deleted() {
 }
 
 #[test]
+fn a_preset_is_never_left_without_a_name() {
+    let (mut shell, id) = with_a_preset();
+    let name = shell.view().presets.unwrap()[0].name.clone();
+    shell.send(Event::RenamePreset {
+        id,
+        name: "  ".into(),
+    });
+    assert_eq!(shell.view().presets.unwrap()[0].name, name, "kept");
+
+    // Saved without one: named as Save new suggests, after its sounds.
+    let suggested = shell.view().preset_name;
+    shell.send(Event::SavePreset {
+        name: String::new(),
+    });
+    assert_eq!(shell.view().presets.unwrap()[1].name, suggested);
+}
+
+#[test]
 fn next_and_previous_step_through_the_presets() {
     let (mut shell, first) = with_a_preset();
     shell.send(Event::StartLayout(Layout::One));
@@ -1336,10 +1376,7 @@ fn layers_read() -> Shell {
     shell.send(Event::ShowTab(Tab::Layers));
     assert_eq!(shell.sent, [("go".to_string(), go_keys::read_sound(1))]);
     let layers = shell.view().editor.unwrap().layers.unwrap();
-    assert_eq!(
-        layers.status.as_deref(),
-        Some("Reading the sound from the keyboard…")
-    );
+    assert_eq!(layers.status, Some(LayersStatus::Reading));
     shell.receive(sound_replies(1));
     shell.sent.clear();
     shell
@@ -1401,7 +1438,8 @@ fn the_layers_tab_reads_the_sound_and_edits_it() {
     let control = layer_control(&shell, LayerControl::Cutoff);
     assert_eq!((control.text.as_str(), control.edited), ("110", true));
     let view = layers(&shell);
-    assert!(view.edited && view.cards[1].edited && !view.cards[0].edited);
+    assert!(view.cards[1].edited && !view.cards[0].edited);
+    assert!(shell.view().editor.unwrap().edited);
 
     // Back as the sound had it.
     shell.sent.clear();
@@ -1413,7 +1451,7 @@ fn the_layers_tab_reads_the_sound_and_edits_it() {
             go_keys::sound_bytes(1, &BTreeMap::from([((2, 0x49), 40)]))
         )]
     );
-    assert!(!layers(&shell).edited);
+    assert!(!shell.view().editor.unwrap().edited);
 }
 
 #[test]
@@ -1428,7 +1466,10 @@ fn solo_plays_one_layer_until_the_tab_changes() {
         [("go".to_string(), go_keys::sound_bytes(1, &solo))]
     );
     assert!(layers(&shell).cards[2].soloed);
-    assert!(!layers(&shell).edited, "a solo isn't a change");
+    assert!(
+        !shell.view().editor.unwrap().edited,
+        "a solo isn't a change"
+    );
 
     shell.sent.clear();
     shell.send(Event::ShowTab(Tab::Sound));
@@ -1478,8 +1519,11 @@ fn a_layer_copies_onto_another_even_of_another_sound() {
     });
     shell.send(Event::CopyLayer(1));
     assert_eq!(
-        layers(&shell).paste.as_deref(),
-        Some("Layer 2 of JUNO Piano 1")
+        layers(&shell).paste,
+        Some(PasteView {
+            layer: 1,
+            sound: Some("JUNO Piano 1".into())
+        })
     );
 
     // Onto layer 4, switched off first: it takes layer 2's tone, as
@@ -1506,8 +1550,11 @@ fn a_layer_copies_onto_another_even_of_another_sound() {
     shell.send(Event::Next);
     shell.receive(sound_replies(1));
     assert_eq!(
-        layers(&shell).paste.as_deref(),
-        Some("Layer 2 of JUNO Piano 1")
+        layers(&shell).paste,
+        Some(PasteView {
+            layer: 1,
+            sound: Some("JUNO Piano 1".into())
+        })
     );
 }
 
@@ -1596,7 +1643,7 @@ fn a_layer_plays_a_range_of_keys_and_velocities() {
     // Reset puts its ranges back too.
     shell.send(Event::ResetLayers(Some(0)));
     assert_eq!(card(&shell).detail, "All keys");
-    assert!(!layers(&shell).edited);
+    assert!(!shell.view().editor.unwrap().edited);
 }
 
 #[test]
@@ -1610,10 +1657,7 @@ fn a_new_sound_forgets_layer_changes_and_is_read_again() {
     shell.send(Event::Next);
     let bytes = &shell.sent[0].1;
     assert!(bytes.ends_with(&go_keys::read_sound(1)), "read again");
-    assert_eq!(
-        layers(&shell).status.as_deref(),
-        Some("Reading the sound from the keyboard…")
-    );
+    assert_eq!(layers(&shell).status, Some(LayersStatus::Reading));
 }
 
 #[test]
@@ -1648,20 +1692,14 @@ fn the_layers_tab_says_why_it_cant_edit() {
     let mut shell = Shell::with_settings(None);
     shell.send(Event::ToggleEditor);
     shell.send(Event::ShowTab(Tab::Layers));
-    assert_eq!(
-        layers(&shell).status.as_deref(),
-        Some("Connect your keyboard to edit this sound's layers")
-    );
+    assert_eq!(layers(&shell).status, Some(LayersStatus::NotConnected));
     shell.send(Event::Open(Place::Category {
         bank: Bank::Gm2Drums,
         category: Category::Drums,
     }));
     let kit = shell.listed()[0];
     shell.send(Event::Select(kit));
-    assert_eq!(
-        layers(&shell).status.as_deref(),
-        Some("Drum kits have no layers to edit here")
-    );
+    assert_eq!(layers(&shell).status, Some(LayersStatus::Drums));
 }
 
 #[test]
@@ -1745,7 +1783,7 @@ fn a_sound_picked_while_settings_load_drops_the_kept_sound_s_layers() {
         .resolve(&mut load, StoredSettings(Some(settings.to_json())))
         .unwrap();
     shell.handle(effects);
-    assert_eq!(shell.view().current.unwrap().name, "JUNO Piano 1");
+    assert_eq!(shell.view().display.sound.unwrap().name, "JUNO Piano 1");
     shell.send(Event::SetControl {
         control: Control::Level,
         value: 90,
@@ -1770,6 +1808,38 @@ fn a_keyboard_that_connects_gets_every_setting_even_back_at_default() {
     ] {
         assert!(contains(bytes, &setting), "{setting:02X?}");
     }
+}
+
+#[test]
+fn a_field_of_the_wrong_kind_doesn_t_lose_the_rest() {
+    let settings =
+        Settings::from_json(r#"{"favourites":null,"parts":{},"presets":[{"id":1,"name":"Gig"}]}"#)
+            .expect("the rest still reads");
+    assert_eq!(settings.favourites, Vec::<String>::new());
+    assert_eq!(settings.presets.len(), 1);
+}
+
+#[test]
+fn settings_that_can_t_be_read_aren_t_saved_over() {
+    let mut shell = Shell::start();
+    let mut load = shell.load.take().unwrap();
+    let effects = shell
+        .core
+        .resolve(&mut load, StoredSettings(Some("{not json".into())))
+        .unwrap();
+    shell.handle(effects);
+    shell.send(Event::ToggleFavourite(0));
+    assert!(
+        shell.saved.is_none(),
+        "what was kept stays for a later build to read"
+    );
+}
+
+#[test]
+fn nothing_is_saved_before_the_settings_have_loaded() {
+    let mut shell = Shell::start();
+    shell.send(Event::ToggleFavourite(0));
+    assert!(shell.saved.is_none());
 }
 
 #[test]
@@ -1801,7 +1871,7 @@ fn removing_an_earlier_part_keeps_editing_the_same_one() {
     let zones = shell.view().layout.zones;
     let editing = zones.iter().find(|z| z.editing).unwrap();
     assert_eq!(editing.sound, "88StageGrand");
-    assert_eq!(editing.label, "1", "now part 1");
+    assert_eq!(editing.part, 0, "now part 1");
 }
 
 #[test]
@@ -1853,12 +1923,8 @@ fn a_preset_lists_its_parts_keys() {
     shell.send(Event::SavePreset { name: "Gig".into() });
     shell.send(Event::Open(Place::Presets));
     let presets = shell.view().presets.unwrap();
-    let keys: Vec<(u8, u8, u8)> = presets[0]
-        .zones
-        .iter()
-        .map(|z| (z.part, z.low, z.high))
-        .collect();
-    assert_eq!(keys, [(0, 60, 127), (1, 0, 59)]);
+    let keys: Vec<(u8, u8)> = presets[0].zones.iter().map(|z| (z.low, z.high)).collect();
+    assert_eq!(keys, [(60, 127), (0, 59)]);
 }
 
 /// The display for the part playing `sound`, selected for it.
@@ -1873,7 +1939,7 @@ fn display_for(shell: &mut Shell, sound: &str) -> shared::DisplayView {
         .expect("a part plays it");
     shell.send(Event::EditPart(part));
     let display = shell.view().display;
-    assert_eq!(display.title, sound);
+    assert_eq!(display.sound.as_ref().unwrap().name, sound);
     display
 }
 
@@ -1883,10 +1949,10 @@ fn open_editor_opens_it_on_a_part_whether_it_was_open_or_not() {
     shell.send(Event::AddPart);
     shell.send(Event::OpenEditor(0));
     assert!(shell.view().editor.is_some());
-    assert_eq!(shell.view().display.part, 0);
+    assert_eq!(shell.view().display.part, 1);
     shell.send(Event::OpenEditor(1));
     assert!(shell.view().editor.is_some(), "still open");
-    assert_eq!(shell.view().display.part, 1);
+    assert_eq!(shell.view().display.part, 2);
 }
 
 #[test]
@@ -1897,7 +1963,7 @@ fn a_zone_names_its_sound_s_category() {
     let zone = &shell.view().layout.zones[0];
     assert_eq!(
         Some(zone.category.clone()),
-        shell.view().current.map(|c| c.category)
+        shell.view().display.sound.map(|c| c.category)
     );
 }
 

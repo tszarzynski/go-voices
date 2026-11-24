@@ -20,38 +20,31 @@ struct DevicesSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Keyboard").goKeys(.title)
-                Spacer()
-                Button("Done", action: done)
-                    .buttonStyle(FlatButtonStyle())
-                    .keyboardShortcut(.defaultAction)
-            }
-            .padding(GoKeys.page)
+            SheetHeader(title: "Keyboard", done: done)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: GoKeys.section) {
                     if let status = view.status {
-                        Display { StatusLine(status: status) { send(.dismissStatus) } }
+                        Display { StatusLine(status: status.message) { send(.dismissStatus) } }
                     }
                     // Each section: its heading beside its control, then a
                     // short line on what it does.
-                    Section(title: "Keyboards", hint: view.devices.isEmpty ? view.devicesHint : nil) {
+                    Section(title: "Keyboards", hint: view.devices.isEmpty ? Wording.devicesHint : nil) {
                         VStack(spacing: GoKeys.tight) {
                             ForEach(view.devices, id: \.id) { device in
                                 DeviceRow(device: device) { send(.toggleDevice(deviceId: device.id)) }
                             }
                         }
                     }
-                    Section(title: "MIDI channel", hint: view.channelHint) {
+                    Section(title: "MIDI channel", hint: Wording.channelHint) {
                         ChannelMenu(view: view, send: send).fixedSize()
                     }
-                    Section(title: view.seamless.label, hint: view.seamless.hint) {
-                        Button(view.seamless.on ? "On" : "Off") { send(.setSeamless(!view.seamless.on)) }
-                            .buttonStyle(FlatButtonStyle(on: view.seamless.on))
-                            .help("\(view.seamless.label): click to switch")
-                            .accessibilityLabel(view.seamless.label)
-                            .accessibilityValue(view.seamless.on ? "On" : "Off")
+                    Section(title: Wording.seamless, hint: Wording.seamlessHint) {
+                        Button(view.seamless ? "On" : "Off") { send(.setSeamless(!view.seamless)) }
+                            .buttonStyle(FlatButtonStyle(on: view.seamless))
+                            .help("\(Wording.seamless): \(Wording.tap.lowercased()) to switch")
+                            .accessibilityLabel(Wording.seamless)
+                            .accessibilityValue(view.seamless ? "On" : "Off")
                     }
                     ForEach(view.keyboard ?? [], id: \.title) { group in
                         Section(title: group.title, hint: group.note.isEmpty ? nil : group.note) {
@@ -59,12 +52,12 @@ struct DevicesSheet: View {
                         }
                         ControlGrid(groups: [group], bare: true, send: send)
                     }
-                    Section(title: "Bluetooth", hint: view.bluetooth.hint) {
+                    Section(title: "Bluetooth", hint: Wording.bluetoothHint) {
                         VStack(alignment: .leading, spacing: GoKeys.tight) {
                             ForEach(view.bluetooth.found, id: \.id) { device in
                                 DeviceRow(device: device) { send(.toggleDevice(deviceId: device.id)) }
                             }
-                            Button(view.bluetooth.action) {
+                            Button(Wording.bluetoothAction) {
                                 send(view.bluetooth.scanning ? .stopBluetoothScan : .startBluetoothScan)
                             }
                             .buttonStyle(FlatButtonStyle(on: view.bluetooth.scanning))
@@ -135,7 +128,7 @@ private struct DeviceRow: View {
     var body: some View {
         HStack(spacing: GoKeys.gap) {
             LedDot(color: device.state.led)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(device.name).goKeys(.row).lineLimit(1)
                 Text(device.detail).goKeys(.detail, color: GoKeys.dim)
             }
@@ -155,9 +148,9 @@ private struct ChannelMenu: View {
     let send: (Event) -> Void
 
     var body: some View {
-        FlatMenu(title: view.channelLabel, label: "MIDI channel") {
-            ForEach(view.channels, id: \.channel) { option in
-                MenuChoice(title: option.label, selected: option.selected) { send(.setChannel(option.channel)) }
+        FlatMenu(title: Wording.channel(view.channel), label: "MIDI channel") {
+            ForEach(view.channels, id: \.self) { channel in
+                MenuChoice(title: Wording.channel(channel), selected: channel == view.channel) { send(.setChannel(channel)) }
             }
         }
     }

@@ -42,7 +42,7 @@ impl CoreFfi {
         effects
     }
 
-    /// Resolve an effect and return the effects.
+    /// Resolves an effect; returns the effects it requests.
     ///
     /// An item for a stream the core has finished with (a scan result just
     /// after the scan stopped, say) is ignored: shells deliver stream items

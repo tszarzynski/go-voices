@@ -24,7 +24,7 @@ pub use wave::{Wave, Waves};
 use alloc::vec::Vec;
 
 /// The patches in `data/patches.tsv`, in the keyboard's order.
-pub const PATCHES_TSV: &str = include_str!("../data/patches.tsv");
+const PATCHES_TSV: &str = include_str!("../data/patches.tsv");
 
 /// Every patch, in catalogue order. A patch's id is its index here.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -102,7 +102,7 @@ mod tests {
         let catalogue = Catalogue::builtin();
         for bank in [Bank::JunoDs, Bank::Gm2, Bank::Gm2Drums] {
             assert!(
-                catalogue.patches().iter().any(|p| p.bank() == bank),
+                catalogue.patches().iter().any(|p| p.bank() == Some(bank)),
                 "{bank:?}"
             );
         }

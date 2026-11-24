@@ -12,7 +12,7 @@ workspace = true
 [features]
 # On by default. Turn it off to build the core for an embedded target.
 default = ["std"]
-std = ["catalogue/std", "crux_midi/std", "crux_core/std", "facet/std", "futures/std", "serde/std", "serde_json/std"]
+std = ["catalogue/std", "crux_midi/std", "crux_core/std", "facet/std", "serde/std", "serde_json/std"]
 facet_typegen = ["std", "crux_core/facet_typegen"]
 
 [dependencies]
@@ -20,7 +20,6 @@ catalogue.workspace = true
 crux_core.workspace = true
 crux_midi.workspace = true
 facet.workspace = true
-futures.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 

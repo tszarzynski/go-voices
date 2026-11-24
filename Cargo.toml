@@ -27,7 +27,6 @@ crux_core = { git = "https://github.com/redbadger/crux", rev = "974d2a9fc0937559
 # Shared with chord-detector: github.com/tszarzynski/crux-midi.
 crux_midi = { package = "crux-midi", git = "https://github.com/tszarzynski/crux-midi", tag = "v0.1.0", default-features = false }
 facet = { version = "=0.46.5", default-features = false, features = ["alloc"] }
-futures = { version = "0.3", default-features = false, features = ["alloc"] }
 serde = { version = "1.0.229", default-features = false, features = ["alloc", "derive"] }
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
 catalogue = { path = "catalogue", default-features = false }

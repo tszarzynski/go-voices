@@ -35,14 +35,17 @@ final class MidiShell: EffectHandler {
     init(pairing: Pairing, defaults: UserDefaults = .standard) {
         self.pairing = pairing
         self.defaults = defaults
-        MIDIClientCreateWithBlock("GoVoices" as CFString, &client) { @Sendable [weak self] notification in
+        // Each step's status is logged: if one fails, no keyboard shows,
+        // and the log says why.
+        let created = MIDIClientCreateWithBlock("GoVoices" as CFString, &client) { @Sendable [weak self] notification in
             guard notification.pointee.messageID == .msgSetupChanged else { return }
             Task { @MainActor in self?.setupChanged() }
         }
+        Self.check(created, "MIDI client")
         // The core reads the keyboard's settings, which come back as SysEx;
         // that is all that's passed on (the keys and the panel aren't needed).
         // Each source is connected with its unique id as the reference.
-        MIDIInputPortCreateWithProtocol(client, "Input" as CFString, ._1_0, &input) { @Sendable [weak self] list, reference in
+        let inputCreated = MIDIInputPortCreateWithProtocol(client, "Input" as CFString, ._1_0, &input) { @Sendable [weak self] list, reference in
             let source = MIDIUniqueID(truncatingIfNeeded: Int(bitPattern: reference))
             var packets: [(status: UInt32, data: [UInt8])] = []
             for packet in list.unsafeSequence() {
@@ -53,7 +56,14 @@ final class MidiShell: EffectHandler {
             guard !packets.isEmpty else { return }
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.received(packets, from: source) } }
         }
-        MIDIOutputPortCreate(client, "Output" as CFString, &output)
+        Self.check(inputCreated, "MIDI input port")
+        Self.check(MIDIOutputPortCreate(client, "Output" as CFString, &output), "MIDI output port")
+    }
+
+    /// Logs a CoreMIDI step that failed.
+    private static func check(_ status: OSStatus, _ what: String) {
+        guard status != noErr else { return }
+        midiLog.error("\(what, privacy: .public) not created: \(status)")
     }
 
     // MARK: - EffectHandler: MIDI
@@ -73,6 +83,7 @@ final class MidiShell: EffectHandler {
         MainActor.assumeIsolated {
             guard let uid = MIDIUniqueID(operation.deviceId) else { return }
             connections.removeValue(forKey: uid)
+            incoming.removeValue(forKey: uid)
             if let source = source(uid) {
                 MIDIPortDisconnectSource(input, source)
             }

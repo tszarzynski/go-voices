@@ -7,6 +7,7 @@
 //! sounding keep their sound.
 
 use alloc::vec::Vec;
+use core::ops::RangeInclusive;
 
 use facet::Facet;
 use serde::{Deserialize, Serialize};
@@ -23,16 +24,17 @@ pub const MOST: usize = 4;
 
 /// The parts the keyboard has from 1 to the spares' last: those the app
 /// switches off when it doesn't play them.
-const USED: core::ops::RangeInclusive<u8> = 1..=8;
+const USED: RangeInclusive<u8> = 1..=8;
 
 /// One part: its sound, keys, settings and layers.
 #[derive(Clone, Debug)]
 pub struct Part {
     /// The sound picked, by patch id.
     pub sound: Option<usize>,
-    /// Its lowest and highest keys, as MIDI notes. At the keyboard's ends
-    /// they're 0 and 127: every key past them too.
+    /// Its lowest key, as a MIDI note: 0 at the keyboard's end, every key
+    /// past it too.
     pub low: u8,
+    /// Its highest key: 127 at the keyboard's end.
     pub high: u8,
     /// Its changed settings.
     pub edits: Edits,
@@ -136,8 +138,7 @@ pub fn can_add(model: &Model) -> bool {
 pub fn start(model: &mut Model, layout: Layout) {
     let editing = model.editing();
     let mut first = model.parts.swap_remove(editing);
-    let second = model.parts.first().cloned();
-    model.parts.clear();
+    let second = model.parts.drain(..).next();
     first.low = 0;
     first.high = 127;
     model.parts.push(first);

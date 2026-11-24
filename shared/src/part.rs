@@ -192,11 +192,7 @@ impl Control {
             "Vibrato",
             &[Self::VibratoRate, Self::VibratoDepth, Self::VibratoDelay],
         ),
-        Group {
-            title: "Effect sends",
-            note: "",
-            controls: &[Self::ReverbSend, Self::ChorusSend],
-        },
+        group("Effect sends", &[Self::ReverbSend, Self::ChorusSend]),
     ];
 
     /// The Edit panel's groups for the whole keyboard: every part.

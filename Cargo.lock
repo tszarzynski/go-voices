@@ -1067,7 +1067,6 @@ dependencies = [
  "crux-midi",
  "crux_core",
  "facet",
- "futures",
  "serde",
  "serde_json",
 ]

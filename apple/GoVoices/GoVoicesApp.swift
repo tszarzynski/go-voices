@@ -47,7 +47,8 @@ struct GoVoicesApp: App {
                     .keyboardShortcut("-", modifiers: .command)
                     .disabled(textSize == .compact)
                 Button("Bigger") { resize(.comfortable) }
-                    .keyboardShortcut("+", modifiers: .command)
+                    // ⌘= and ⌘+ alike, as in other Mac apps.
+                    .keyboardShortcut("=", modifiers: .command)
                     .disabled(textSize == .comfortable)
                 Divider()
             }

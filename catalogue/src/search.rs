@@ -35,9 +35,8 @@ impl Query {
             return Some(0);
         }
         let name = patch.name.to_ascii_lowercase();
-        let category: String = [patch.category.name(), " ", patch.category.code()]
-            .concat()
-            .to_ascii_lowercase();
+        let mut category = [patch.category.name(), " ", patch.category.code()].concat();
+        category.make_ascii_lowercase();
         if !self
             .words
             .iter()

@@ -207,6 +207,14 @@ go-voices/
 - [x] Text size on the Mac: View › Text Size, Comfortable (0.9× spacing, 0.93× text) or Compact (0.77×, as the iPad app on a Mac); kept between launches {#text-size}
 - [x] CI: GitHub Actions builds the Mac app (universal, ad-hoc signed; no paid developer account, so not notarised) on pushes to main as an artifact, and as a release for v* tags; README explains opening it {#ci-mac}
 - [x] CI: checks and tests (`just`, `check-nostd`) on Linux for every push and pull request {#ci-checks}
+- [x] Release review fixes {#release-review}
+  - Settings: a field of the wrong kind no longer loses the rest; nothing is saved before the settings are read, or over settings this build can't read
+  - Presets never left without a name (a blank one takes the suggested name; a blank rename is ignored)
+  - The core works in values: display, devices, Bluetooth, channel, seamless, tabs, the Layers status and the copied layer are values; the shell words them (`Wording.swift`), and MIDI errors come as `MidiError`
+  - Unused view fields, the `futures` dependency and `Wave::is_left` removed; the envelope graph found by its controls, not its title; one patch lookup without allocating; the Sound tab's groups only built on that tab
+  - Swift: one search box, sheet header and empty message; the sound list redrawn only when it changes; wave rows by wave; ⌘← ⌘→ left to the search field while typing; ⌘= for Bigger; font and CoreMIDI failures logged; Help worded per platform with every shortcut; tokens and sizes in `Theme.swift`
+- [x] Idiomatic Rust pass before the first release: `commit` takes its bytes, iterator and `let … else` forms, `Patch::bank` returns an `Option` (no panic), waves found by binary search (order tested), no needless allocations, every public field documented {#rust-style}
+- [ ] crux-midi 0.1.1 (`toggle`/`forget` take `impl Into<String>`): committed locally, waiting on the go-ahead to tag and push {#crux-midi-0-1-1}
 - [ ] First CI run passes on GitHub's runner {#ci-mac-check}
 - [ ] The person checks the new layout on Mac and iPhone {#ui-check}
 

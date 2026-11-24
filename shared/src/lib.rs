@@ -22,7 +22,7 @@ mod layers;
 /// The part and keyboard settings the Edit panel changes.
 pub mod part;
 mod parts;
-/// The effects the core asks the shells to perform, besides MIDI.
+/// What the app keeps between launches, and the effects that keep it.
 pub mod settings;
 mod view;
 
@@ -34,9 +34,9 @@ pub use crux_midi::effects as midi;
 pub use layers::Tab;
 pub use parts::Layout;
 pub use view::{
-    BankNode, BluetoothView, ChannelOption, ChoiceView, ConnectionView, ControlView, CurrentView,
-    DeviceState, DeviceView, DisplayView, EditorView, GroupView, KeyRangeView, KeysView,
-    LayerCardView, LayersView, LayoutView, LoadedView, NoteTick, PlaceView, PointView, PresetView,
-    RowView, SectionView, Setting, SwitchView, TabView, ViewModel, WavePickerView, WaveRowView,
+    BankNode, BluetoothView, ChoiceView, ConnectionView, ControlView, CurrentView, DeviceState,
+    DeviceView, DisplayView, EditorView, GroupView, KeyRangeView, KeysView, LayerCardView,
+    LayersStatus, LayersView, LayoutView, LoadedView, NoteTick, PasteView, PlaceView, PointView,
+    PresetView, RowView, SectionView, Setting, TabView, ViewModel, WavePickerView, WaveRowView,
     WaveView, ZoneView,
 };

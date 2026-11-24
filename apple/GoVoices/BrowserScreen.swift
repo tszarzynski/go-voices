@@ -18,6 +18,9 @@ struct BrowserScreen: View {
     @State private var editorIsSheet = false
     /// Narrow screens: the list is showing, rather than the tree.
     @State private var showingList = false
+    /// The search field has the keyboard: ⌘← and ⌘→ move its cursor then,
+    /// rather than stepping sounds.
+    @FocusState private var searching: Bool
 
     /// Below this width (iPhone, narrow iPad), the tree and the list take
     /// turns.
@@ -35,11 +38,11 @@ struct BrowserScreen: View {
             // The tree at a fixed width; the list and the Edit panel share
             // the rest equally.
             PlaceTree(view: view, send: send) {}
-                .frame(width: 220)
+                .frame(width: GoKeys.tree)
                 .panel()
             VStack(spacing: 0) {
-                TargetBar(view: view, send: send)
-                SearchField(view: view, send: send)
+                TargetBar(view: view, searching: searching, send: send)
+                SearchField(view: view, focused: $searching, send: send)
                 ListColumn(view: view, send: send)
             }
             .frame(minWidth: GoKeys.s(300), maxWidth: .infinity)
@@ -67,8 +70,8 @@ struct BrowserScreen: View {
                         split(inspector: inspector)
                     } else {
                         VStack(spacing: 0) {
-                            TargetBar(view: view, send: send)
-                            SearchField(view: view, send: send)
+                            TargetBar(view: view, searching: searching, send: send)
+                            SearchField(view: view, focused: $searching, send: send)
                             if showingList {
                                 PlaceHeader(view: view) { showingList = false }
                                 ListColumn(view: view, send: send)
@@ -130,8 +133,6 @@ struct BrowserScreen: View {
 
 // MARK: - Keyboard button
 
-/// A bar along the top holding the keyboard button on the right, padded
-/// like the footer.
 /// Which keyboard sounds go to, with its LED; opens the keyboards sheet.
 private struct KeyboardButton: View {
     let connection: ConnectionView
@@ -292,20 +293,18 @@ extension Place {
 /// a way back to the tree.
 private struct PlaceHeader: View {
     let view: ViewModel
-    let back: (() -> Void)?
+    let back: () -> Void
 
     var body: some View {
         HStack(spacing: GoKeys.tight) {
-            if let back {
-                Button(action: back) {
-                    Image(systemName: "chevron.left").font(.system(size: GoKeys.t(12), weight: .semibold))
-                        .frame(width: GoKeys.s(24), height: GoKeys.s(24))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(GoKeys.text)
-                .accessibilityLabel("Places")
+            Button(action: back) {
+                Image(systemName: "chevron.left").font(.system(size: GoKeys.t(12), weight: .semibold))
+                    .frame(width: GoKeys.s(24), height: GoKeys.s(24))
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .foregroundStyle(GoKeys.text)
+            .accessibilityLabel("Places")
             Text(caps: view.placeTitle).goKeys(.label).lineLimit(1)
             Spacer(minLength: GoKeys.gap)
         }
@@ -318,54 +317,21 @@ private struct PlaceHeader: View {
 /// The search field. ⌘F focuses it; Escape clears it.
 private struct SearchField: View {
     let view: ViewModel
+    var focused: FocusState<Bool>.Binding
     let send: (Event) -> Void
 
-    @FocusState private var focused: Bool
-
     var body: some View {
-        HStack(spacing: GoKeys.tight) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: GoKeys.t(12)))
-                .foregroundStyle(GoKeys.dim)
-            TextField(
-                "",
-                text: Binding(get: { view.query }, set: { send(.search($0)) }),
-                prompt: Text(view.searchPrompt).foregroundStyle(GoKeys.dim)
-            )
-            .textFieldStyle(.plain)
-            .font(GoKeysText.row.font)
-            .foregroundStyle(GoKeys.text)
-            .autocorrectionDisabled()
-            #if os(iOS)
-            .textInputAutocapitalization(.never)
-            .submitLabel(.search)
-            #endif
-            .focused($focused)
-            .onKeyPress(.escape) {
-                guard !view.query.isEmpty else { return .ignored }
-                send(.search(""))
-                return .handled
-            }
+        SearchBox(
+            text: Binding(get: { view.query }, set: { send(.search($0)) }),
+            prompt: view.searchPrompt,
+            focused: focused
+        ) {
             // How many are listed: the header's count, now the list has none.
             Text(view.count).goKeys(.readout, color: GoKeys.dim).lineLimit(1).fixedSize()
-            if !view.query.isEmpty {
-                Button { send(.search("")) } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(GoKeys.dim)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Clear search")
-            }
-        }
-        .padding(.horizontal, GoKeys.gap)
-        .frame(height: GoKeys.row)
-        .background(GoKeys.background, in: RoundedRectangle(cornerRadius: GoKeys.radius))
-        .overlay {
-            RoundedRectangle(cornerRadius: GoKeys.radius)
-                .strokeBorder(focused ? Pad.silver.base : GoKeys.line, lineWidth: 1)
         }
         .background {
             // ⌘F, without a visible button.
-            Button("Search") { focused = true }
+            Button("Search") { focused.wrappedValue = true }
                 .keyboardShortcut("f", modifiers: .command)
                 .hidden()
         }
@@ -390,7 +356,8 @@ private struct ListColumn: View {
                 send: send
             )
         } else {
-            PatchList(view: view, send: send)
+            PatchList(sections: view.sections, empty: view.empty, current: view.display.sound?.id, send: send)
+                .equatable()
         }
     }
 }
@@ -410,12 +377,7 @@ private struct PresetList: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                if let empty {
-                    Text(empty)
-                        .goKeys(.row, color: GoKeys.dim)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, GoKeys.empty)
-                }
+                if let empty { EmptyMessage(text: empty) }
                 ForEach(presets, id: \.id) { preset in
                     row(preset)
                 }
@@ -465,9 +427,18 @@ private struct PresetList: View {
     }
 }
 
-private struct PatchList: View {
-    let view: ViewModel
+/// The sounds listed. Drawn again only when what it shows changes, not on
+/// every redraw of the screen (a knob turning, a lane dragged).
+private struct PatchList: View, Equatable {
+    let sections: [SectionView]
+    let empty: String?
+    /// The sound picked for the part selected.
+    let current: UInt32?
     let send: (Event) -> Void
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.sections == rhs.sections && lhs.empty == rhs.empty && lhs.current == rhs.current
+    }
 
     // A lazy stack in a scroll view, like the tree, rather than a `List`:
     // on the Mac a List is a table view, which warned of reentrant layout
@@ -478,17 +449,13 @@ private struct PatchList: View {
                 // Each category's heading stays at the top while its sounds
                 // scroll under it.
                 LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                    if let empty = view.empty {
-                        Text(empty)
-                            .goKeys(.row, color: GoKeys.dim)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, GoKeys.empty)
-                    }
-                    // A category can come in several runs, so titles repeat: by position.
-                    ForEach(Array(view.sections.enumerated()), id: \.offset) { _, section in
+                    if let empty { EmptyMessage(text: empty) }
+                    // A category can come in several runs, so a title can
+                    // repeat: each run by its title and first sound.
+                    ForEach(sections, id: \.key) { section in
                         SwiftUI.Section {
                             ForEach(section.rows, id: \.id) { row in
-                                PatchRow(row: row, send: send)
+                                PatchRow(row: row, current: row.id == current, send: send)
                                     .id(row.id)
                             }
                         } header: {
@@ -506,7 +473,7 @@ private struct PatchList: View {
                 }
             }
             .background(GoKeys.panel)
-            .onChange(of: view.current?.id) { _, id in
+            .onChange(of: current) { _, id in
                 guard let id else { return }
                 withAnimation { proxy.scrollTo(id) }
             }
@@ -518,6 +485,7 @@ private struct PatchList: View {
 /// has a dotted grey border.
 private struct PatchRow: View {
     let row: RowView
+    let current: Bool
     let send: (Event) -> Void
 
     var body: some View {
@@ -525,14 +493,14 @@ private struct PatchRow: View {
             Button { send(.select(row.id)) } label: {
                 HStack(spacing: GoKeys.gap) {
                     Text(row.name)
-                        .goKeys(.row, color: row.current ? GoKeys.selectedText : GoKeys.text)
-                        .fontWeight(row.current ? .semibold : .regular)
+                        .goKeys(.row, color: current ? GoKeys.selectedText : GoKeys.text)
+                        .fontWeight(current ? .semibold : .regular)
                         .lineLimit(1)
                     Spacer(minLength: GoKeys.gap)
                     if !row.category.isEmpty {
-                        Text(row.category).goKeys(.detail, color: secondary).lineLimit(1)
+                        Text(row.category).goKeys(.detail, color: GoKeys.dim).lineLimit(1)
                     }
-                    Text(row.address).goKeys(.readout, color: secondary)
+                    Text(row.address).goKeys(.readout, color: GoKeys.dim)
                 }
                 .contentShape(Rectangle())
             }
@@ -544,19 +512,16 @@ private struct PatchRow: View {
         .padding(.leading, GoKeys.page)
         .padding(.trailing, Self.scrollBarInset)
         // The current sound has a dotted grey border, as the selected place in the tree.
-        .selectedRim(row.current)
+        .selectedRim(current)
         .background(GoKeys.panel)
     }
 
     /// Room on the right for an overlay scroll bar.
     static var scrollBarInset: CGFloat { GoKeys.s(16) }
 
-    /// Small print.
-    private var secondary: Color { GoKeys.dim }
-
     /// The star: amber when starred.
     private var star: Color {
-        switch (row.favourite, row.current) {
+        switch (row.favourite, current) {
         case (true, _): GoKeys.amber
         case (false, true): GoKeys.dim
         case (false, false): GoKeys.faint
@@ -695,11 +660,13 @@ extension View {
 /// panel, and Edit for that part.
 private struct TargetBar: View {
     let view: ViewModel
+    /// The search field has the keyboard: ⌘← and ⌘→ are its, then.
+    let searching: Bool
     let send: (Event) -> Void
 
     var body: some View {
         HStack(spacing: GoKeys.gap) {
-            Display { DisplayText(display: view.display, send: send) }
+            Display { DisplayText(view: view, send: send) }
             HStack(spacing: GoKeys.s(10)) {
                 stepButton("minus", label: "Previous", event: .previous, key: .leftArrow)
                 stepButton("plus", label: "Next", event: .next, key: .rightArrow)
@@ -727,7 +694,7 @@ private struct TargetBar: View {
                 .font(.system(size: GoKeys.t(17), weight: .bold))
         }
         .buttonStyle(RoundButtonStyle())
-        .keyboardShortcut(key, modifiers: .command)
+        .keyboardShortcut(searching ? nil : KeyboardShortcut(key, modifiers: .command))
         .help(event == .next ? "Next sound in the list (⌘→)" : "Previous sound in the list (⌘←)")
         .accessibilityLabel(label)
     }
@@ -751,7 +718,7 @@ private struct EditorPanel: View {
             HStack(spacing: GoKeys.gap) {
                 ToggleGroup {
                     ForEach(editor.tabs, id: \.tab) { tab in
-                        Button(tab.label) { send(.showTab(tab.tab)) }
+                        Button(tab.tab.label) { send(.showTab(tab.tab)) }
                             .buttonStyle(FlatButtonStyle(on: tab.selected))
                             .help(tab.tab == .layers ? "Layers: the sound's own four layers" : "Sound: the part's level, play, tune and tone")
                             .accessibilityAddTraits(tab.selected ? .isSelected : [])
@@ -793,17 +760,19 @@ private struct EditorPanel: View {
 /// One display: `[HEADING]` and the address, the title and the star, and
 /// the footnote or an error.
 private struct DisplayText: View {
-    let display: DisplayView
+    let view: ViewModel
     let send: (Event) -> Void
+
+    private var display: DisplayView { view.display }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: GoKeys.s(6)) {
+            HStack(spacing: GoKeys.tight) {
                 Text("[\(display.heading.uppercased())]")
                     .goKeys(.displaySmall, color: GoKeys.displayText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Spacer(minLength: GoKeys.s(4))
+                Spacer(minLength: GoKeys.tight)
                 if let sound = display.sound {
                     // The bank goes first when space is short.
                     ViewThatFits(in: .horizontal) {
@@ -813,8 +782,8 @@ private struct DisplayText: View {
                     .lineLimit(1)
                 }
             }
-            HStack(spacing: GoKeys.s(6)) {
-                Text(display.title)
+            HStack(spacing: GoKeys.tight) {
+                Text(display.title(count: view.count))
                     .goKeys(.displayLarge, color: GoKeys.displayText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
@@ -823,14 +792,20 @@ private struct DisplayText: View {
                     StarButton(on: sound.favourite) { send(.toggleFavourite(sound.id)) }
                 }
             }
-            if let status = display.status {
-                StatusLine(status: status) { send(.dismissStatus) }
+            if let status = view.status {
+                StatusLine(status: status.message) { send(.dismissStatus) }
             } else {
-                Text(display.footnote)
+                Text(display.footnote(connected: view.connection.state == .connected, channel: view.channel))
                     .goKeys(.displaySmall, color: GoKeys.displayDim)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
         }
     }
+}
+
+extension SectionView {
+    /// Which run of the list it is: a category can come in several runs,
+    /// so its title and first sound.
+    var key: String { "\(title)·\(rows.first?.id ?? 0)" }
 }

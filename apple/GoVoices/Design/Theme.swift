@@ -1,4 +1,5 @@
 import CoreText
+import OSLog
 import SwiftUI
 
 /// Design tokens: flat greys with the GO:KEYS red as the one accent, in the
@@ -11,11 +12,13 @@ enum GoKeys {
 
     static let background = Color(hex: 0x1C1C1C) // the list
     static let panel = Color(hex: 0x272727) // the strips above and below it
-    static let control = Color(hex: 0x353535) // buttons and toggles
+    static let control = Color(hex: 0x353535) // wells: knob faces, key bars, key caps
     static let controlPressed = Color(hex: 0x444444)
     static let line = Color(hex: 0x111111) // 1px borders between controls
 
     static let text = Color(hex: 0xE4E4E4)
+    /// Text selected in a list: brighter than the rest.
+    static let selectedText = Color.white
     static let dim = Color(hex: 0xA3A3A3) // small print and labels
     static let faint = Color(hex: 0x5E5E5E) // an unset star, the least there is
 
@@ -88,6 +91,15 @@ enum GoKeys {
     static var page: CGFloat { GoKeys.s(12) }
     /// Between sections and groups.
     static var section: CGFloat { GoKeys.s(24) }
+    /// The red between panels, and round them.
+    static var frame: CGFloat { GoKeys.s(10) }
+    /// One row's height: a lane, Add part, the keyboard, a row of a list
+    /// (and so its selection's outline).
+    static var row: CGFloat { GoKeys.s(32) }
+    /// The corners of everything inside a panel: pads, fields, readouts.
+    static var radius: CGFloat { GoKeys.s(4) }
+    /// The tree's width: 220 points at Comfortable.
+    static var tree: CGFloat { GoKeys.s(244) }
     /// Round an empty list's message.
     static var empty: CGFloat { GoKeys.s(40) }
 
@@ -104,11 +116,21 @@ enum GoKeys {
     /// matrix.
     static func registerFonts() {
         for name in ["SpaceGrotesk-Variable", "Quicksand-Variable", "JetBrainsMono-Variable", "VT323-Regular"] {
-            guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else { continue }
-            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            // Missing or refused, the system font stands in: say so.
+            guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else {
+                fontLog.error("font \(name, privacy: .public) isn't in the app")
+                continue
+            }
+            var error: Unmanaged<CFError>?
+            if !CTFontManagerRegisterFontsForURL(url as CFURL, .process, &error) {
+                let reason = error?.takeRetainedValue().localizedDescription ?? "unknown"
+                fontLog.error("font \(name, privacy: .public) not registered: \(reason, privacy: .public)")
+            }
         }
     }
 }
+
+private let fontLog = Logger(subsystem: "com.tszarzynski.govoices", category: "fonts")
 
 extension Color {
     init(hex: UInt32) {

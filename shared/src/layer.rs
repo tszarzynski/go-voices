@@ -69,10 +69,12 @@ impl Sound {
     pub fn fill(&mut self, block: u8, index: usize, data: &[u8]) {
         let target: &mut [u8] = match block {
             0 => &mut self.mix,
-            tone => match self.tones.get_mut(usize::from(tone) - 1) {
-                Some(tone) => tone,
-                None => return,
-            },
+            tone => {
+                let Some(tone) = self.tones.get_mut(usize::from(tone) - 1) else {
+                    return;
+                };
+                tone
+            }
         };
         for (slot, &byte) in target.iter_mut().skip(index).zip(data) {
             *slot = byte;
@@ -470,13 +472,6 @@ pub fn velocity_text(low: u8, high: u8) -> String {
 pub fn owns(layer: u8, (block, index): Place) -> bool {
     let row = 5 + 9 * layer;
     block == layer + 1 || (block == 0 && (row..row + 9).contains(&index))
-}
-
-/// Whether `place` is one of layer `layer`'s wave bytes (group type, group,
-/// left and right).
-#[must_use]
-pub fn is_wave(layer: u8, (block, index): Place) -> bool {
-    block == layer + 1 && (WAVE_GROUP_TYPE..WAVE_RIGHT + 4).contains(&index)
 }
 
 /// Where a layer's wave is: the group type (internal), the group and the

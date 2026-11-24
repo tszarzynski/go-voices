@@ -7,7 +7,7 @@
 use alloc::vec::Vec;
 
 /// The waves in `data/waves.tsv`.
-pub const WAVES_TSV: &str = include_str!("../data/waves.tsv");
+const WAVES_TSV: &str = include_str!("../data/waves.tsv");
 
 /// One wave.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -21,10 +21,11 @@ pub struct Wave {
 }
 
 impl Wave {
-    /// The left wave of a stereo pair.
+    /// Its name as shown: a stereo pair's left wave stands for the pair,
+    /// without its ` L`.
     #[must_use]
-    pub fn is_left(&self) -> bool {
-        self.name.ends_with(" L")
+    pub fn shown_name(&self) -> &'static str {
+        self.name.trim_end_matches(" L")
     }
 
     /// The right wave of a stereo pair, which goes with its left one.
@@ -78,9 +79,11 @@ impl Waves {
     /// The wave with this group and number.
     #[must_use]
     pub fn get(&self, group: u16, number: u16) -> Option<&Wave> {
+        // Kept in group and number order.
         self.0
-            .iter()
-            .find(|wave| wave.group == group && wave.number == number)
+            .binary_search_by_key(&(group, number), |wave| (wave.group, wave.number))
+            .ok()
+            .map(|index| &self.0[index])
     }
 
     /// For a left wave, the right one that goes with it.
@@ -95,6 +98,16 @@ impl Waves {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn waves_are_in_group_and_number_order_for_lookups() {
+        let waves = Waves::builtin();
+        assert!(
+            waves
+                .all()
+                .is_sorted_by_key(|wave| (wave.group, wave.number))
+        );
+    }
 
     #[test]
     fn names_waves_and_pairs_them() {

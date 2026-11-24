@@ -12,19 +12,6 @@ struct DottedOutline: View {
     }
 }
 
-extension GoKeys {
-    /// The red between panels, and round them.
-    static var frame: CGFloat { GoKeys.s(10) }
-    /// One row's height: a lane, Add part, the keyboard, a row of a list
-    /// (and so its selection's outline).
-    static var row: CGFloat { GoKeys.s(32) }
-    /// The corners of everything inside a panel: pads, fields, readouts.
-    static var radius: CGFloat { GoKeys.s(4) }
-
-    /// Text selected in a list: brighter than the rest.
-    static let selectedText = Color.white
-}
-
 extension View {
     /// A panel set into the red body: its corners rounded.
     func panel() -> some View {
@@ -78,8 +65,11 @@ struct FlatButtonStyle: ButtonStyle {
 /// A round button as on the GO:KEYS panel: the panel's grey, with a red
 /// rim and a white symbol. Pressed, the face lightens; `on`, it's red.
 struct RoundButtonStyle: ButtonStyle {
-    var size: CGFloat = GoKeys.s(52)
     var on = false
+
+    private var size: CGFloat { GoKeys.s(52) }
+    /// The red ring's width.
+    private let rim: CGFloat = 2.5
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -92,7 +82,7 @@ struct RoundButtonStyle: ButtonStyle {
                     Circle().fill(GoKeys.accent)
                     Circle()
                         .fill(configuration.isPressed ? GoKeys.controlPressed : (on ? GoKeys.accent : GoKeys.panel))
-                        .padding(2.5)
+                        .padding(rim)
                 }
             }
             .scaleEffect(configuration.isPressed ? 0.94 : 1)
@@ -105,7 +95,8 @@ struct RoundButtonStyle: ButtonStyle {
 /// A small LED.
 struct LedDot: View {
     let color: Color
-    var size: CGFloat = GoKeys.s(7)
+
+    private var size: CGFloat { GoKeys.s(7) }
 
     var body: some View {
         // A light rim so it shows on the wine pads too.
@@ -125,7 +116,7 @@ struct Display<Content: View>: View {
             .padding(.vertical, GoKeys.s(6))
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(GoKeys.display, in: RoundedRectangle(cornerRadius: GoKeys.radius))
-            .overlay { RoundedRectangle(cornerRadius: GoKeys.radius).strokeBorder(Color.black, lineWidth: 2) }
+            .overlay { RoundedRectangle(cornerRadius: GoKeys.radius).strokeBorder(GoKeys.line, lineWidth: 2) }
     }
 }
 
@@ -715,13 +706,10 @@ struct ZoneMap: View {
 
     private var keyboard: KeyAxis { KeyAxis(first: layout.first, last: layout.last) }
 
-    /// Every row's height: the lanes, Add part and the keyboard.
-    static var row: CGFloat { GoKeys.row }
-    /// The space between rows.
-    static var spacing: CGFloat { GoKeys.gap }
-
+    // Every row (the lanes, Add part and the keyboard) a row high, a gap
+    // apart.
     var body: some View {
-        VStack(spacing: Self.spacing) {
+        VStack(spacing: GoKeys.gap) {
             ForEach(layout.zones, id: \.part) { zone in
                 ZoneLane(zone: zone, keyboard: keyboard, send: send)
             }
@@ -741,25 +729,23 @@ private struct AddPartLane: View {
     let send: (Event) -> Void
 
     var body: some View {
-        HStack(spacing: 0) {
-            Button { send(.addPart) } label: {
-                HStack(spacing: GoKeys.tight) {
-                    Image(systemName: "plus").font(.system(size: GoKeys.t(10), weight: .bold))
-                    Text("Add part").font(GoKeysText.name.font)
-                    Spacer(minLength: 0)
-                }
-                .foregroundStyle(GoKeys.dim)
-                .padding(.horizontal, GoKeys.gap)
-                .frame(maxWidth: .infinity, minHeight: ZoneMap.row, maxHeight: ZoneMap.row)
-                .overlay {
-                    DottedOutline()
-                }
-                .contentShape(Rectangle())
+        Button { send(.addPart) } label: {
+            HStack(spacing: GoKeys.tight) {
+                Image(systemName: "plus").font(.system(size: GoKeys.t(10), weight: .bold))
+                Text("Add part").font(GoKeysText.name.font)
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
-            .help("Add a part: splits the selected part in two")
-            .accessibilityHint("Splits the selected part in two")
+            .foregroundStyle(GoKeys.dim)
+            .padding(.horizontal, GoKeys.gap)
+            .frame(maxWidth: .infinity, minHeight: GoKeys.row, maxHeight: GoKeys.row)
+            .overlay {
+                DottedOutline()
+            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .help("Add a part: splits the selected part in two")
+        .accessibilityHint("Splits the selected part in two")
     }
 }
 
@@ -794,7 +780,7 @@ struct KeyRuler: View {
                 }
             }
         }
-        .frame(height: ZoneMap.row)
+        .frame(height: GoKeys.row)
         .clipShape(RoundedRectangle(cornerRadius: GoKeys.radius))
         .accessibilityHidden(true)
     }
@@ -826,7 +812,7 @@ private struct ZoneLane: View {
             .gesture(drag(in: size))
             .rangeCursor { range.grab(at: $0, width: size.width) }
         }
-        .frame(height: ZoneMap.row)
+        .frame(height: GoKeys.row)
         .help("\(zone.title): click to pick its sound, double-click to edit it. Drag an end to set its keys, or the middle to move them.")
         .contextMenu {
             Button("Edit \(zone.title)") { send(.openEditor(zone.part)) }
@@ -1025,5 +1011,83 @@ struct MiniZones: View {
             }
         }
         .accessibilityHidden(true)
+    }
+}
+
+/// A sheet's title, with Done (Return) on the right.
+struct SheetHeader: View {
+    let title: String
+    let done: () -> Void
+
+    var body: some View {
+        HStack {
+            Text(title).goKeys(.title)
+            Spacer()
+            Button("Done", action: done)
+                .buttonStyle(FlatButtonStyle())
+                .keyboardShortcut(.defaultAction)
+        }
+        .padding(GoKeys.page)
+    }
+}
+
+/// A search field in a dark well: its prompt, a count or clear button on
+/// the right, and Esc to clear it. `focused` is the field's focus, for
+/// shortcuts that shouldn't fire while typing.
+struct SearchBox<Trailing: View>: View {
+    @Binding var text: String
+    let prompt: String
+    var focused: FocusState<Bool>.Binding
+    @ViewBuilder var trailing: Trailing
+
+    var body: some View {
+        HStack(spacing: GoKeys.tight) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: GoKeys.t(12)))
+                .foregroundStyle(GoKeys.dim)
+            TextField("", text: $text, prompt: Text(prompt).foregroundStyle(GoKeys.dim))
+                .textFieldStyle(.plain)
+                .font(GoKeysText.row.font)
+                .foregroundStyle(GoKeys.text)
+                .autocorrectionDisabled()
+                #if os(iOS)
+                .textInputAutocapitalization(.never)
+                .submitLabel(.search)
+                #endif
+                .focused(focused)
+                .onKeyPress(.escape) {
+                    guard !text.isEmpty else { return .ignored }
+                    text = ""
+                    return .handled
+                }
+            trailing
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(GoKeys.dim)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, GoKeys.gap)
+        .frame(height: GoKeys.row)
+        .background(GoKeys.background, in: RoundedRectangle(cornerRadius: GoKeys.radius))
+        .overlay {
+            RoundedRectangle(cornerRadius: GoKeys.radius)
+                .strokeBorder(focused.wrappedValue ? Pad.silver.base : GoKeys.line, lineWidth: 1)
+        }
+    }
+}
+
+/// What an empty list says, centred in it.
+struct EmptyMessage: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .goKeys(.row, color: GoKeys.dim)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, GoKeys.empty)
     }
 }

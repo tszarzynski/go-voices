@@ -1,7 +1,8 @@
-//! The view model: what every shell draws, worded here once.
+//! The view model: what every shell draws, as values.
 //!
-//! Shells choose fonts, colours, layout and letter case. Everything that
-//! depends on the app's state, including the words, comes from here.
+//! The core gives the state: names, numbers, keys and settings with their
+//! values written out (`C4`, `L20`, `+3`). Shells word their own chrome:
+//! buttons, hints, prompts and errors.
 
 use alloc::{
     format,
@@ -9,22 +10,22 @@ use alloc::{
     vec::Vec,
 };
 
-use catalogue::Patch;
+use catalogue::{Bank, Patch};
 use crux_midi::{
     LinkState,
-    effects::{MidiDevice, Transport},
+    effects::{MidiDevice, MidiError, Transport},
 };
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    app::{CHANNELS, Model, Place, Platform},
+    app::{CHANNELS, Model, Place},
     go_keys,
     layer::{self, LayerControl},
     layers::{self, Tab},
     part::{Control, Group},
     parts,
-    settings::{self, Setup},
+    settings::{self, PartSetup, Preset, Setup},
 };
 
 /// Everything a shell draws.
@@ -54,8 +55,6 @@ pub struct ViewModel {
     pub count: String,
     /// What to say when the list is empty.
     pub empty: Option<String>,
-    /// The sound picked for the part being edited.
-    pub current: Option<CurrentView>,
     /// The display: the part being edited, where the next pick goes.
     pub display: DisplayView,
     /// The parts on the zone map.
@@ -66,22 +65,19 @@ pub struct ViewModel {
     pub keyboard: Option<Vec<GroupView>>,
     /// The wave picker, while it's showing.
     pub waves: Option<WavePickerView>,
-    /// `Channel 1`.
-    pub channel_label: String,
+    /// The MIDI channel sounds go on.
+    pub channel: u8,
     /// For `SetChannel`: every channel.
-    pub channels: Vec<ChannelOption>,
-    /// For `SetSeamless`, in the keyboards sheet.
-    pub seamless: SwitchView,
-    /// What the channel setting is for, in the keyboards sheet.
-    pub channel_hint: String,
+    pub channels: Vec<u8>,
+    /// Seamless switching is on (`SetSeamless`).
+    pub seamless: bool,
     /// Listed devices, then [`BluetoothView::found`] ones being connected.
     pub devices: Vec<DeviceView>,
-    /// What to say while `devices` is empty.
-    pub devices_hint: String,
     /// Pairing or scanning for Bluetooth keyboards.
     pub bluetooth: BluetoothView,
-    /// The last error, until `DismissStatus` or the next attempt.
-    pub status: Option<String>,
+    /// Why the last connection or scan failed, until `DismissStatus` or
+    /// the next attempt.
+    pub status: Option<MidiError>,
 }
 
 /// Where a device's connection is.
@@ -154,8 +150,6 @@ pub struct RowView {
     pub category: String,
     /// Starred.
     pub favourite: bool,
-    /// The patch picked last.
-    pub current: bool,
 }
 
 /// The patch picked last.
@@ -196,10 +190,9 @@ pub struct PresetView {
 /// A part's keys, for a small zone map.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct KeysView {
-    /// From 0, for its colour.
-    pub part: u8,
-    /// Its lowest and highest keys (0 and 127: every key that way).
+    /// Its lowest key (0: every key down).
     pub low: u8,
+    /// Its highest key (127: every key up).
     pub high: u8,
 }
 
@@ -217,40 +210,14 @@ pub struct LoadedView {
 /// The display: the part being edited's sound.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 pub struct DisplayView {
-    /// The part, from 0.
+    /// The part, from 1.
     pub part: u8,
-    /// `2 · Acoustic piano`, `Acoustic piano`, `Go:Voices`.
-    pub heading: String,
-    /// The sound's name, or what's listed, or `—`.
-    pub title: String,
-    /// What happens next, or the part's keys: `Up to B3 · Oct −1`.
-    pub footnote: String,
-    /// Its sound, for the address and the star.
+    /// There's more than one part, so the display says which.
+    pub several: bool,
+    /// The part's keys and octave: `Up to B3 · Oct −1`.
+    pub keys: String,
+    /// Its sound.
     pub sound: Option<CurrentView>,
-    /// The last error.
-    pub status: Option<String>,
-}
-
-/// A setting that's on or off.
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
-pub struct SwitchView {
-    /// `Seamless switching`.
-    pub label: String,
-    /// What it does.
-    pub hint: String,
-    /// On.
-    pub on: bool,
-}
-
-/// One MIDI channel in the channel menu.
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct ChannelOption {
-    /// For `SetChannel`.
-    pub channel: u8,
-    /// `Channel 1`.
-    pub label: String,
-    /// In use.
-    pub selected: bool,
 }
 
 /// The zone map: the parts and their keys.
@@ -258,8 +225,9 @@ pub struct ChannelOption {
 pub struct LayoutView {
     /// One lane per part, in order.
     pub zones: Vec<ZoneView>,
-    /// The keyboard's first and last keys, to draw.
+    /// The keyboard's first key, to draw.
     pub first: u8,
+    /// Its last key.
     pub last: u8,
     /// `AddPart` can add one.
     pub can_add: bool,
@@ -272,8 +240,6 @@ pub struct LayoutView {
 pub struct ZoneView {
     /// For `EditPart`, `RemovePart` and `SetKeys`, from 0.
     pub part: u8,
-    /// `1`.
-    pub label: String,
     /// `Part 1`.
     pub title: String,
     /// `Remove part 1`, if it can be taken away (not the only one).
@@ -282,8 +248,9 @@ pub struct ZoneView {
     pub sound: String,
     /// Its sound's category, `Acoustic piano`, or empty.
     pub category: String,
-    /// Its lowest and highest keys (0 and 127: every key that way).
+    /// Its lowest key (0: every key down).
     pub low: u8,
+    /// Its highest key (127: every key up).
     pub high: u8,
     /// `Up to B3`, `All keys`.
     pub keys: String,
@@ -321,8 +288,6 @@ pub struct EditorView {
 pub struct TabView {
     /// For `ShowTab`.
     pub tab: Tab,
-    /// `Sound`, `Layers`.
-    pub label: String,
     /// Showing.
     pub selected: bool,
 }
@@ -330,21 +295,41 @@ pub struct TabView {
 /// The Layers tab: a sound's four layers, and the selected one's settings.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct LayersView {
-    /// Why there's nothing to edit yet: reading, no keyboard, a drum kit.
-    pub status: Option<String>,
+    /// Why there's nothing to edit yet.
+    pub status: Option<LayersStatus>,
     /// The layers, for `SelectLayer` and `SoloLayer`. Empty until read.
     pub cards: Vec<LayerCardView>,
     /// The selected layer's wave.
     pub wave: Option<WaveView>,
     /// The selected layer's settings, in groups.
     pub groups: Vec<GroupView>,
-    /// Anything changed, to reset.
-    pub edited: bool,
-    /// The layer `PasteLayer` would paste: `Layer 2 of JUNO Piano 1`.
-    pub paste: Option<String>,
-    /// The keyboard's first and last keys, to draw layers' keys on.
+    /// The layer `PasteLayer` would paste.
+    pub paste: Option<PasteView>,
+    /// The keyboard's first key, to draw layers' keys on.
     pub first: u8,
+    /// Its last key.
     pub last: u8,
+}
+
+/// Why the Layers tab has nothing to edit yet.
+#[derive(Facet, Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(C)]
+pub enum LayersStatus {
+    /// A drum kit: no layers to edit here.
+    Drums,
+    /// No keyboard to read the sound from.
+    NotConnected,
+    /// Reading the sound from the keyboard.
+    Reading,
+}
+
+/// A layer copied, to paste onto another.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct PasteView {
+    /// Its layer, from 0.
+    pub layer: u8,
+    /// Its sound's name, if it had one.
+    pub sound: Option<String>,
 }
 
 /// One layer, in the row of layers.
@@ -370,9 +355,10 @@ pub struct LayerCardView {
     pub soloed: bool,
     /// Changed from the sound's.
     pub edited: bool,
-    /// The lowest and highest keys it plays (MIDI notes, may be past the
-    /// keyboard's ends).
+    /// The lowest key it plays (a MIDI note, may be past the keyboard's
+    /// end).
     pub low: u8,
+    /// The highest key it plays.
     pub high: u8,
     /// Which keys, and how hard it must be played if not at any velocity:
     /// `Up to B3 · Velocity 122–127`, `All keys`.
@@ -387,8 +373,9 @@ pub struct KeyRangeView {
     pub low: ControlView,
     /// The highest key.
     pub high: ControlView,
-    /// Keys below the lowest and above the highest it fades over.
+    /// Keys below the lowest it fades in over.
     pub fade_low: u8,
+    /// Keys above the highest it fades out over.
     pub fade_high: u8,
     /// `Up to B3`.
     pub text: String,
@@ -401,8 +388,6 @@ pub struct WaveView {
     pub name: String,
     /// `Group 1 · 291`, `Group 1 · 1–2 stereo`.
     pub detail: String,
-    /// Changed from the sound's.
-    pub edited: bool,
 }
 
 /// The wave picker: every wave a layer can have, as searched.
@@ -498,43 +483,39 @@ pub struct ChoiceView {
 }
 
 /// One row of the device list.
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct DeviceView {
     /// For `ToggleDevice`.
     pub id: String,
     /// What to call it.
     pub name: String,
-    /// Where its connection is.
+    /// How it's attached.
+    pub transport: Transport,
+    /// Where its connection is: `ToggleDevice` connects, cancels or
+    /// disconnects.
     pub state: DeviceState,
-    /// `USB`, `Bluetooth` …, or `Connecting…`, `Connected`.
-    pub detail: String,
-    /// What `ToggleDevice` does: `Connect`, `Cancel` or `Disconnect`.
-    pub action: String,
 }
 
 /// Finding Bluetooth keyboards.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 pub struct BluetoothView {
-    /// Whether a scan is running.
+    /// Whether a scan is running: `StopBluetoothScan` stops it, and
+    /// `StartBluetoothScan` scans or, where the system pairs, opens that.
     pub scanning: bool,
-    /// What the Bluetooth panel says.
-    pub hint: String,
-    /// The button: scan, stop (send `StopBluetoothScan`), or pair.
-    pub action: String,
     /// Devices found by the scan that aren't listed (or being connected).
     pub found: Vec<DeviceView>,
 }
 
+/// What the shells draw, from the model.
 #[must_use]
 pub fn view_model(model: &Model) -> ViewModel {
     let (devices, found) = device_views(model);
     let filters = &model.filters;
     let total = model.catalogue.patches().len();
-    let presets = (filters.place == Place::Presets).then(|| preset_views(model));
+    let loaded = model.loaded();
+    let presets = (filters.place == Place::Presets).then(|| preset_views(model, loaded));
     let listed = presets.as_ref().map_or(model.results.len(), Vec::len);
     let noun = if presets.is_some() { "preset" } else { "sound" };
-    let count_text = count(filters.searching(), listed, noun);
-    let connected_any = devices.iter().any(|d| d.state == DeviceState::Connected);
     ViewModel {
         connection: connection_view(&devices),
         places: [
@@ -553,41 +534,26 @@ pub fn view_model(model: &Model) -> ViewModel {
         sections: sections(model),
         presets,
         preset_name: preset_name(model),
-        loaded: model.loaded().map(|(preset, edited)| LoadedView {
+        loaded: loaded.map(|(preset, edited)| LoadedView {
             id: preset.id,
             name: preset.name.clone(),
             edited,
         }),
-        count: count_text.clone(),
+        count: count(filters.searching(), listed, noun),
         empty: (listed == 0).then(|| empty_text(model)),
-        current: current_view(model, model.editing()),
-        display: display(model, connected_any, &count_text),
+        display: display(model),
         layout: layout_view(model),
         editor: model.editor.then(|| editor_view(model)),
         keyboard: model
             .keyboard_sheet
             .then(|| groups(model, &Control::KEYBOARD_GROUPS)),
         waves: wave_picker(model),
-        channel_label: channel_label(model.channel),
-        seamless: SwitchView {
-            label: "Seamless switching".into(),
-            hint: "Held notes keep their sound when you pick a new one. Uses two more of the \
-                   keyboard's parts; untested with a sustain pedal."
-                .into(),
-            on: model.seamless,
-        },
-        channels: CHANNELS
-            .map(|channel| ChannelOption {
-                channel,
-                label: channel_label(channel),
-                selected: channel == model.channel,
-            })
-            .collect(),
-        channel_hint: "The keyboard listens on channel 1 unless its settings were changed.".into(),
-        devices_hint: devices_hint(model.platform).into(),
+        channel: model.channel,
+        channels: CHANNELS.collect(),
+        seamless: model.seamless,
         devices,
         bluetooth: bluetooth_view(model, found),
-        status: model.midi.status().map(ToString::to_string),
+        status: model.midi.status().cloned(),
     }
 }
 
@@ -599,7 +565,7 @@ fn current_view(model: &Model, index: usize) -> Option<CurrentView> {
         id: row_id(id),
         name: patch.name.clone(),
         category: patch.category.name().into(),
-        bank: patch.bank().name().into(),
+        bank: patch.bank().map(Bank::name).unwrap_or_default().into(),
         address: patch.address(),
         favourite: model.favourites.contains(&id),
     })
@@ -616,8 +582,8 @@ fn count(searching: bool, listed: usize, noun: &str) -> String {
 }
 
 /// The presets the list shows.
-fn preset_views(model: &Model) -> Vec<PresetView> {
-    let loaded = model.loaded().map(|(preset, edited)| (preset.id, edited));
+fn preset_views(model: &Model, loaded: Option<(&Preset, bool)>) -> Vec<PresetView> {
+    let loaded = loaded.map(|(preset, edited)| (preset.id, edited));
     model
         .listed_presets()
         .map(|preset| {
@@ -632,9 +598,7 @@ fn preset_views(model: &Model) -> Vec<PresetView> {
                     .setup
                     .parts
                     .iter()
-                    .enumerate()
-                    .map(|(index, part)| KeysView {
-                        part: u8::try_from(index).unwrap_or_default(),
+                    .map(|part| KeysView {
                         low: part.low,
                         high: part.high,
                     })
@@ -647,7 +611,7 @@ fn preset_views(model: &Model) -> Vec<PresetView> {
 /// What a setup plays: `Single · JUNO Piano 1`, `Split C4 · Fretless /
 /// JUNO Piano 1`, `Layer · …`, `3 parts · …` (lowest keys first).
 fn describe(model: &Model, setup: &Setup) -> String {
-    let mut parts: Vec<&settings::PartSetup> = setup.parts.iter().collect();
+    let mut parts: Vec<&PartSetup> = setup.parts.iter().collect();
     parts.sort_by_key(|part| (part.low, part.high));
     let names = parts
         .iter()
@@ -659,7 +623,7 @@ fn describe(model: &Model, setup: &Setup) -> String {
         })
         .collect::<Vec<_>>()
         .join(" / ");
-    let full = |part: &&settings::PartSetup| part.low == 0 && part.high == 127;
+    let full = |part: &&PartSetup| part.low == 0 && part.high == 127;
     match parts.as_slice() {
         [_] => format!("Single · {names}"),
         [lower, upper] if u16::from(lower.high) + 1 == u16::from(upper.low) => {
@@ -680,8 +644,9 @@ fn by_keys(model: &Model) -> Vec<usize> {
     order
 }
 
-/// A name for a new preset: its sounds', lowest keys first.
-fn preset_name(model: &Model) -> String {
+/// What Save new suggests calling a preset: its sounds, lowest keys
+/// first.
+pub fn preset_name(model: &Model) -> String {
     let names: Option<Vec<String>> = by_keys(model)
         .into_iter()
         .map(|index| model.sound(index).map(|patch| patch.name.clone()))
@@ -692,52 +657,27 @@ fn preset_name(model: &Model) -> String {
     )
 }
 
-fn channel_label(channel: u8) -> String {
-    format!("Channel {channel}")
-}
-
 /// The display: the part being edited.
-fn display(model: &Model, connected: bool, count: &str) -> DisplayView {
+fn display(model: &Model) -> DisplayView {
     let index = model.editing();
-    let several = model.parts.len() > 1;
-    let sound = current_view(model, index);
-    let number = parts::number(index);
-    let heading = match (&sound, several) {
-        (None, false) => "Go:Voices".into(),
-        (None, true) => number.to_string(),
-        (Some(sound), false) => sound.category.clone(),
-        (Some(sound), true) => format!("{number} · {}", sound.category),
-    };
-    let title = match (&sound, several) {
-        (Some(sound), _) => sound.name.clone(),
-        (None, false) => count.into(),
-        (None, true) => "—".into(),
-    };
-    let footnote = match (sound.is_some(), several, connected) {
-        (_, true, _) => keys(model, index),
-        (false, false, _) => "Tap a sound to play it on your keyboard".into(),
-        (true, false, true) => format!("Sent on channel {}", model.channel),
-        (true, false, false) => "Sent when a keyboard connects".into(),
-    };
     DisplayView {
-        part: u8::try_from(index).unwrap_or_default(),
-        heading,
-        title,
-        footnote,
-        sound,
-        status: model.midi.status().map(ToString::to_string),
+        part: parts::number(index),
+        several: model.parts.len() > 1,
+        keys: keys(model, index),
+        sound: current_view(model, index),
     }
 }
 
 fn control_view(model: &Model, control: Control) -> ControlView {
     let value = model.value(control);
+    let (min, max) = control.range();
     ControlView {
         setting: Setting::Part(control),
         label: control.label().into(),
         text: control.text(value),
         value,
-        min: control.range().0,
-        max: control.range().1,
+        min,
+        max,
         edited: value != model.default_value(control),
         choices: choices(control.choices()),
     }
@@ -756,13 +696,14 @@ fn choices(choices: Vec<(i16, &'static str)>) -> Vec<ChoiceView> {
 /// A setting of the selected layer.
 fn layer_control_view(model: &Model, control: LayerControl) -> ControlView {
     let value = layers::value(model, control).unwrap_or_default();
+    let (min, max) = control.range();
     ControlView {
         setting: Setting::Layer(control),
         label: control.label().into(),
         text: control.text(value),
         value,
-        min: control.range().0,
-        max: control.range().1,
+        min,
+        max,
         edited: layers::original(model, control).is_some_and(|original| original != value),
         choices: choices(control.choices()),
     }
@@ -771,7 +712,7 @@ fn layer_control_view(model: &Model, control: LayerControl) -> ControlView {
 /// The selected layer's settings, in groups.
 fn layer_groups(model: &Model) -> Vec<GroupView> {
     let sounds = &model.edited().layers;
-    let byte = |place| sounds.byte(place).unwrap_or_default();
+    let byte = |place| sounds.byte_or_zero(place);
     let key =
         |control: LayerControl| u8::try_from(control.value(model.layer, byte)).unwrap_or_default();
     layer::GROUPS
@@ -796,15 +737,17 @@ fn layer_groups(model: &Model) -> Vec<GroupView> {
                     fade_high: key(LayerControl::KeyFadeHigh),
                     text: go_keys::keys_text(key(LayerControl::KeyLow), key(LayerControl::KeyHigh)),
                 }),
-            envelope: match title {
-                "Filter envelope" | "Amp envelope" => {
-                    layer::envelope(model.layer, title == "Amp envelope", byte)
+            // The envelopes' groups, by their attack: drawn as a shape.
+            envelope: [LayerControl::FilterAttack, LayerControl::AmpAttack]
+                .into_iter()
+                .find(|attack| controls.contains(attack))
+                .map(|attack| {
+                    layer::envelope(model.layer, attack == LayerControl::AmpAttack, byte)
                         .into_iter()
                         .map(|(x, y)| PointView { x, y })
                         .collect()
-                }
-                _ => Vec::new(),
-            },
+                })
+                .unwrap_or_default(),
         })
         .collect()
 }
@@ -813,27 +756,26 @@ fn layer_groups(model: &Model) -> Vec<GroupView> {
 fn layers_view(model: &Model) -> LayersView {
     let sounds = &model.edited().layers;
     let status = if layers::drums(model) {
-        Some("Drum kits have no layers to edit here")
+        Some(LayersStatus::Drums)
     } else if sounds.ready() {
         None
     } else if model.midi.connected().next().is_none() {
-        Some("Connect your keyboard to edit this sound's layers")
+        Some(LayersStatus::NotConnected)
     } else {
-        Some("Reading the sound from the keyboard…")
+        Some(LayersStatus::Reading)
     };
-    if let Some(status) = status {
+    if status.is_some() {
         return LayersView {
-            status: Some(status.into()),
+            status,
             cards: Vec::new(),
             wave: None,
             groups: Vec::new(),
-            edited: false,
             paste: None,
             first: go_keys::FIRST,
             last: go_keys::LAST,
         };
     }
-    let byte = |place| sounds.byte(place).unwrap_or_default();
+    let byte = |place| sounds.byte_or_zero(place);
     let key =
         |control: LayerControl, layer| u8::try_from(control.value(layer, byte)).unwrap_or_default();
     let cards = (0..layer::LAYERS)
@@ -875,10 +817,6 @@ fn layers_view(model: &Model) -> LayersView {
                 || format!("Group {group} · {number}"),
                 |right| format!("Group {group} · {number}–{} stereo", right.number),
             ),
-            edited: sounds
-                .edits
-                .keys()
-                .any(|&place| layer::is_wave(model.layer, place)),
         }
     });
     let groups = layer_groups(model);
@@ -887,8 +825,10 @@ fn layers_view(model: &Model) -> LayersView {
         cards,
         wave,
         groups,
-        edited: !sounds.edits.is_empty(),
-        paste: model.copied.as_ref().map(|copied| copied.from.clone()),
+        paste: model.copied.as_ref().map(|copied| PasteView {
+            layer: copied.layer,
+            sound: copied.sound.clone(),
+        }),
         first: go_keys::FIRST,
         last: go_keys::LAST,
     }
@@ -902,7 +842,7 @@ fn wave_picker(model: &Model) -> Option<WavePickerView> {
         .map(|wave| WaveRowView {
             group: wave.group,
             number: wave.number,
-            name: wave.name.trim_end_matches(" L").into(),
+            name: wave.shown_name().into(),
             detail: format!("{} · {}", wave.group, wave.number),
             current: current == Some((wave.group, wave.number)),
         })
@@ -937,19 +877,21 @@ fn editor_view(model: &Model) -> EditorView {
     let layers = (model.tab == Tab::Layers).then(|| layers_view(model));
     EditorView {
         title,
-        groups: groups(model, &Control::GROUPS),
-        edited: layers.as_ref().map_or_else(
-            || {
-                Control::part_controls()
-                    .any(|control| model.value(control) != model.default_value(control))
-            },
-            |layers| layers.edited,
-        ),
-        tabs: [(Tab::Sound, "Sound"), (Tab::Layers, "Layers")]
+        groups: if layers.is_some() {
+            Vec::new()
+        } else {
+            groups(model, &Control::GROUPS)
+        },
+        edited: if layers.is_some() {
+            !model.edited().layers.edits.is_empty()
+        } else {
+            Control::part_controls()
+                .any(|control| model.value(control) != model.default_value(control))
+        },
+        tabs: [Tab::Sound, Tab::Layers]
             .into_iter()
-            .map(|(tab, label)| TabView {
+            .map(|tab| TabView {
                 tab,
-                label: label.into(),
                 selected: model.tab == tab,
             })
             .collect(),
@@ -996,7 +938,6 @@ fn layout_view(model: &Model) -> LayoutView {
                 let sound = model.sound(index);
                 ZoneView {
                     part: u8::try_from(index).unwrap_or_default(),
-                    label: parts::number(index).to_string(),
                     title: part_label(index),
                     remove: remove_label(model, index),
                     sound: sound.map_or_else(|| "—".into(), |patch| patch.name.clone()),
@@ -1105,14 +1046,14 @@ fn place_title(place: Place) -> String {
 }
 
 /// What the search looks through, after `Search`.
-fn search_scope(place: Place) -> String {
+const fn search_scope(place: Place) -> &'static str {
     match place {
-        Place::All => "all sounds".into(),
-        Place::Favourites => "favourites".into(),
-        Place::Recent => "recent sounds".into(),
-        Place::Presets => "presets".into(),
-        Place::Bank(bank) => bank.name().into(),
-        Place::Category { category, .. } => category.name().into(),
+        Place::All => "all sounds",
+        Place::Favourites => "favourites",
+        Place::Recent => "recent sounds",
+        Place::Presets => "presets",
+        Place::Bank(bank) => bank.name(),
+        Place::Category { category, .. } => category.name(),
     }
 }
 
@@ -1133,7 +1074,6 @@ fn sections(model: &Model) -> Vec<SectionView> {
                 String::new()
             },
             favourite: model.favourites.contains(&id),
-            current: model.picked(model.editing()) == Some(id),
         })
     };
     let rows = model.results.iter().filter_map(|&id| row(id));
@@ -1178,15 +1118,16 @@ fn empty_text(model: &Model) -> String {
     let query = model.filters.query.trim();
     let presets = model.filters.place == Place::Presets;
     match (query.is_empty(), presets) {
-        (false, true) => return format!("No presets match “{query}”"),
-        (false, false) => return format!("No sounds match “{query}”"),
-        (true, true) => return "Save what you're playing to keep it here".into(),
-        (true, false) => {}
-    }
-    match model.filters.place {
-        Place::Favourites if model.favourites.is_empty() => "Star a sound to keep it here".into(),
-        Place::Recent if model.recents.is_empty() => "Sounds you pick show up here".into(),
-        _ => "No sounds here".into(),
+        (false, true) => format!("No presets match “{query}”"),
+        (false, false) => format!("No sounds match “{query}”"),
+        (true, true) => "Save what you're playing to keep it here".into(),
+        (true, false) => match model.filters.place {
+            Place::Favourites if model.favourites.is_empty() => {
+                "Star a sound to keep it here".into()
+            }
+            Place::Recent if model.recents.is_empty() => "Sounds you pick show up here".into(),
+            _ => "No sounds here".into(),
+        },
     }
 }
 
@@ -1244,55 +1185,17 @@ fn device_view(model: &Model, device: &MidiDevice) -> DeviceView {
         Some(LinkState::Connecting) => DeviceState::Connecting,
         None => DeviceState::Disconnected,
     };
-    let (detail, action) = match state {
-        DeviceState::Disconnected => (transport_label(device.transport), "Connect"),
-        DeviceState::Connecting => ("Connecting…", "Cancel"),
-        DeviceState::Connected => ("Connected", "Disconnect"),
-    };
     DeviceView {
         id: device.id.clone(),
         name: device.name.clone(),
+        transport: device.transport,
         state,
-        detail: detail.into(),
-        action: action.into(),
     }
 }
 
-const fn transport_label(transport: Transport) -> &'static str {
-    match transport {
-        Transport::Usb => "USB",
-        Transport::Bluetooth => "Bluetooth",
-        Transport::Virtual => "Virtual",
-        Transport::Other => "MIDI",
-    }
-}
-
-const fn devices_hint(platform: Platform) -> &'static str {
-    match platform {
-        Platform::Mac => "Switch on your keyboard, or connect it with a USB cable.",
-        Platform::Ios => "Pair your keyboard below, or connect it with a USB cable.",
-        Platform::Android => "Scan for your keyboard below, or connect it with a USB cable.",
-    }
-}
-
-fn bluetooth_view(model: &Model, found: Vec<DeviceView>) -> BluetoothView {
-    let scanning = model.midi.scanning();
-    let (hint, action) = match (model.platform, scanning) {
-        (Platform::Android, true) => ("Scanning for Bluetooth MIDI keyboards…", "Stop"),
-        (Platform::Android, false) => ("Find Bluetooth MIDI keyboards nearby.", "Scan"),
-        (Platform::Ios, _) => (
-            "Pair a Bluetooth MIDI keyboard once; after that it connects by itself.",
-            "Pair keyboard…",
-        ),
-        (Platform::Mac, _) => (
-            "Pair in Audio MIDI Setup: Window › Show MIDI Studio › Configure Bluetooth.",
-            "Open MIDI Setup",
-        ),
-    };
+const fn bluetooth_view(model: &Model, found: Vec<DeviceView>) -> BluetoothView {
     BluetoothView {
-        scanning,
-        hint: hint.into(),
-        action: action.into(),
+        scanning: model.midi.scanning(),
         found,
     }
 }

@@ -78,9 +78,10 @@ pub struct PartSetup {
     /// Its sound.
     #[serde(deserialize_with = "or_default")]
     pub sound: Option<String>,
-    /// Its lowest and highest keys (0 and 127: every key that way).
+    /// Its lowest key (0: every key down).
     #[serde(deserialize_with = "or_default")]
     pub low: u8,
+    /// Its highest key (127: every key up).
     #[serde(deserialize_with = "or_high")]
     pub high: u8,
     /// Its changed settings.
@@ -327,13 +328,20 @@ pub(crate) fn patch<'a>(model: &'a Model, key: &str) -> Option<&'a Patch> {
     id(model, key).and_then(|id| model.patch(id))
 }
 
-/// The id of the patch with this key.
+/// The id of the patch with this key: its address read once, then
+/// compared without writing out each patch's.
 fn id(model: &Model, key: &str) -> Option<usize> {
+    let mut parts = key.split('.').map(str::parse::<u8>);
+    let (Some(Ok(msb)), Some(Ok(lsb)), Some(Ok(pc)), None) =
+        (parts.next(), parts.next(), parts.next(), parts.next())
+    else {
+        return None;
+    };
     model
         .catalogue
         .patches()
         .iter()
-        .position(|patch| self::key(patch) == key)
+        .position(|patch| (patch.msb, patch.lsb, patch.pc) == (msb, lsb, pc))
 }
 
 /// How settings name a patch: its address, e.g. `87.64.4`.
@@ -355,11 +363,13 @@ fn or_high<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u8, D::Error> {
     Ok(serde_json::from_value(value).unwrap_or(127))
 }
 
-/// The items the app still knows.
+/// The items the app still knows; none if it isn't a list at all.
 fn known<'de, D: Deserializer<'de>, T: DeserializeOwned>(
     deserializer: D,
 ) -> Result<Vec<T>, D::Error> {
-    let values = Vec::<Value>::deserialize(deserializer)?;
+    let Value::Array(values) = Value::deserialize(deserializer)? else {
+        return Ok(Vec::new());
+    };
     Ok(values
         .into_iter()
         .filter_map(|value| serde_json::from_value(value).ok())

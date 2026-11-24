@@ -5,7 +5,7 @@
 //! with them. Changes belong to the sound: picking another one forgets them,
 //! as the keyboard does.
 
-use alloc::{collections::BTreeMap, string::String, vec::Vec};
+use alloc::{collections::BTreeMap, format, string::String, vec::Vec};
 
 use catalogue::{Category, Wave};
 use facet::Facet;
@@ -49,6 +49,11 @@ impl Layers {
             .get(&place)
             .map(|&(value, _)| value)
             .or_else(|| self.read.as_ref()?.get(place))
+    }
+
+    /// A byte as it is now, or 0 if it isn't known yet.
+    pub(crate) fn byte_or_zero(&self, place: Place) -> u8 {
+        self.byte(place).unwrap_or_default()
     }
 
     /// Read from the keyboard: there's something to edit.
@@ -121,8 +126,10 @@ impl Layers {
 pub struct Copied {
     /// Its tone, as it was when copied.
     tone: [u8; layer::TONE_SIZE],
-    /// `Layer 2 of JUNO Piano 1`.
-    pub(crate) from: String,
+    /// Its layer, from 0.
+    pub(crate) layer: u8,
+    /// Its sound's name, if it had one.
+    pub(crate) sound: Option<String>,
 }
 
 /// The part being edited's sound.
@@ -170,10 +177,11 @@ pub fn reads(model: &mut Model) -> Vec<u8> {
 pub fn receive(model: &mut Model, bytes: &[u8]) -> bool {
     let mut whole = false;
     for (address, data) in go_keys::writes(bytes) {
-        for part in &mut model.parts {
-            if part.layers.reading != Some(part.playing) {
-                continue;
-            }
+        let reading = model
+            .parts
+            .iter_mut()
+            .filter(|part| part.layers.reading == Some(part.playing));
+        for part in reading {
             if let Some((block, index)) = go_keys::in_sound(part.playing, address) {
                 whole |= part.layers.receive(block, index, &data);
             }
@@ -195,7 +203,7 @@ pub fn value(model: &Model, control: LayerControl) -> Option<i16> {
     let layers = current(model);
     layers
         .ready()
-        .then(|| control.value(model.layer, |place| layers.byte(place).unwrap_or_default()))
+        .then(|| control.value(model.layer, |place| layers.byte_or_zero(place)))
 }
 
 /// The selected layer's setting, as the sound had it.
@@ -277,13 +285,9 @@ pub fn set_keys(model: &mut Model, low: u8, high: u8) -> Vec<u8> {
 /// Puts the selected layer's keys back as the sound had them: both ends
 /// at once, so neither is held back by the other's changed end.
 pub fn reset_keys(model: &mut Model) -> Vec<u8> {
-    match (
-        original(model, LayerControl::KeyLow),
-        original(model, LayerControl::KeyHigh),
-    ) {
-        (Some(low), Some(high)) => write_keys(model, low, high),
-        _ => Vec::new(),
-    }
+    original(model, LayerControl::KeyLow)
+        .zip(original(model, LayerControl::KeyHigh))
+        .map_or_else(Vec::new, |(low, high)| write_keys(model, low, high))
 }
 
 /// Writes the selected layer's two key ends together.
@@ -324,11 +328,8 @@ pub fn copy(model: &mut Model, layer: u8) {
     for (index, byte) in (0u8..).zip(&mut tone) {
         *byte = layers.byte((layer + 1, index)).unwrap_or_default();
     }
-    let sound = model
-        .sound(model.editing())
-        .map_or("this sound", |patch| patch.name.as_str());
-    let from = alloc::format!("Layer {} of {sound}", layer + 1);
-    model.copied = Some(Copied { tone, from });
+    let sound = model.sound(model.editing()).map(|patch| patch.name.clone());
+    model.copied = Some(Copied { tone, layer, sound });
 }
 
 /// Pastes the layer copied onto `layer`, switched on: its wave and every
@@ -375,8 +376,7 @@ pub fn end_solo(model: &mut Model) -> Vec<u8> {
     let layers = current(model);
     let switches: Bytes = (0..LAYERS)
         .flat_map(|layer| {
-            let on =
-                LayerControl::Switch.value(layer, |place| layers.byte(place).unwrap_or_default());
+            let on = LayerControl::Switch.value(layer, |place| layers.byte_or_zero(place));
             LayerControl::Switch.bytes(layer, on)
         })
         .collect();
@@ -388,7 +388,7 @@ pub fn wave(model: &Model) -> Option<(u16, u16)> {
     let layers = current(model);
     layers
         .ready()
-        .then(|| layer::wave(model.layer, |place| layers.byte(place).unwrap_or_default()))
+        .then(|| layer::wave(model.layer, |place| layers.byte_or_zero(place)))
 }
 
 /// The waves a layer can be given: each stereo pair once, by its left wave.
@@ -430,10 +430,10 @@ pub fn listed_waves<'a>(model: &'a Model, query: &str) -> impl Iterator<Item = &
 /// A layer's wave name, from the sound as it is now.
 pub fn wave_name(model: &Model, layer: u8) -> String {
     let layers = current(model);
-    let (group, number) = layer::wave(layer, |place| layers.byte(place).unwrap_or_default());
+    let (group, number) = layer::wave(layer, |place| layers.byte_or_zero(place));
     match model.waves.get(group, number) {
-        Some(wave) => wave.name.trim_end_matches(" L").into(),
+        Some(wave) => wave.shown_name().into(),
         None if number == 0 => "No wave".into(),
-        None => alloc::format!("Wave {group}·{number}"),
+        None => format!("Wave {group}·{number}"),
     }
 }

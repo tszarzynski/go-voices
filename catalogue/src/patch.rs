@@ -1,6 +1,6 @@
 //! One patch and how to select it.
 
-use alloc::{string::String, vec, vec::Vec};
+use alloc::{format, string::String, vec, vec::Vec};
 use core::{fmt, num::ParseIntError, str::FromStr};
 
 use facet::Facet;
@@ -62,14 +62,11 @@ impl Bank {
 }
 
 impl Patch {
-    /// Which sound set it's from.
-    ///
-    /// # Panics
-    ///
-    /// Never for a patch from [`Patch::from_str`], which checks the MSB.
+    /// Which sound set it's from: always one for a patch from
+    /// [`Patch::from_str`], which checks the MSB.
     #[must_use]
-    pub const fn bank(&self) -> Bank {
-        Bank::from_msb(self.msb).expect("checked when parsed")
+    pub const fn bank(&self) -> Option<Bank> {
+        Bank::from_msb(self.msb)
     }
 
     /// The MIDI that selects it on `channel` (1–16): bank select MSB and
@@ -97,7 +94,7 @@ impl Patch {
     /// The address, as `87·64·004`.
     #[must_use]
     pub fn address(&self) -> String {
-        alloc::format!("{}·{}·{:03}", self.msb, self.lsb, self.pc)
+        format!("{}·{}·{:03}", self.msb, self.lsb, self.pc)
     }
 }
 

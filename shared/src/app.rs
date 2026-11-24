@@ -31,7 +31,7 @@ use crate::{
     part::{Control, Edits, Scope, Target},
     parts::{self, Layout, Part},
     settings::{self, LoadSettings, Preset, SaveSettings, Settings, StoredSettings},
-    view::ViewModel,
+    view::{self, ViewModel},
 };
 
 /// How many picks the Recent tab keeps.
@@ -210,7 +210,7 @@ pub enum Event {
     SearchWaves(Option<String>),
     /// Show the Edit panel in place of the sound list, or hide it.
     ToggleEditor,
-    /// Opens the Edit panel on part `0` (from 0), whether it was open or
+    /// Opens the Edit panel on this part (from 0), whether it was open or
     /// not.
     OpenEditor(u8),
     /// Open the keyboard sheet, or close it.
@@ -285,6 +285,17 @@ pub enum Effect {
     SaveSettings(SaveSettings),
 }
 
+/// Where the settings kept are.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Stored {
+    /// Not read yet.
+    Loading,
+    /// Read, or there were none: changes are saved.
+    Read,
+    /// Kept, but not in a form this build reads.
+    Unreadable,
+}
+
 /// The app's state, between events.
 pub struct Model {
     pub(crate) catalogue: Catalogue,
@@ -307,6 +318,9 @@ pub struct Model {
     /// Whether the keyboard sheet is open: its settings are only built
     /// while it is.
     pub(crate) keyboard_sheet: bool,
+    /// Whether the settings kept have been read: until they are, or if
+    /// they can't be, nothing is saved over them.
+    pub(crate) stored: Stored,
     /// Its tab.
     pub(crate) tab: Tab,
     /// The layer the Layers tab edits, 0–3.
@@ -348,6 +362,7 @@ impl Default for Model {
             system: Edits::new(),
             editor: false,
             keyboard_sheet: false,
+            stored: Stored::Loading,
             tab: Tab::Sound,
             layer: 0,
             solo: None,
@@ -488,14 +503,7 @@ impl App for GoVoices {
                     render(),
                 ])
             }
-            Event::Loaded(StoredSettings(json)) => {
-                let Some(settings) = json.as_deref().and_then(Settings::from_json) else {
-                    return render();
-                };
-                settings::restore(model, &settings);
-                // A keyboard may have connected while they loaded.
-                send(model.midi.connected(), &state(model)).and(render())
-            }
+            Event::Loaded(StoredSettings(json)) => loaded(model, json.as_deref()),
             Event::Search(query) => {
                 model.filters.query = query;
                 model.refresh();
@@ -518,7 +526,7 @@ impl App for GoVoices {
                     return Command::done();
                 }
                 model.channel = channel;
-                commit(model, &sound(model, 0))
+                commit(model, sound(model, 0))
             }
             Event::StartLayout(_)
             | Event::AddPart
@@ -581,7 +589,7 @@ impl App for GoVoices {
     }
 
     fn view(&self, model: &Model) -> ViewModel {
-        crate::view::view_model(model)
+        view::view_model(model)
     }
 }
 
@@ -594,7 +602,7 @@ fn toggle_favourite(model: &mut Model, id: usize) -> Command<Effect, Event> {
         model.favourites.insert(id);
     }
     model.refresh();
-    commit(model, &[])
+    commit(model, Vec::new())
 }
 
 /// Changes the parts on the zone map: starts again from a layout, adds or
@@ -604,7 +612,7 @@ fn edit_parts(model: &mut Model, event: &Event) -> Command<Effect, Event> {
         if !parts::set_keys(model, usize::from(part), low, high) {
             return Command::done();
         }
-        return commit(model, &parts::zones(model));
+        return commit(model, parts::zones(model));
     }
     // A solo ends on the part it's on, before parts move.
     let mut bytes = layers::end_solo(model);
@@ -622,7 +630,7 @@ fn edit_parts(model: &mut Model, event: &Event) -> Command<Effect, Event> {
         }
         _ => {}
     }
-    commit(model, &bytes)
+    commit(model, bytes)
 }
 
 /// Changes a setting and sends it, so it's heard straight away.
@@ -647,7 +655,7 @@ fn set_control(model: &mut Model, control: Control, value: i16) -> Command<Effec
     } else {
         go_keys::setting(target, control, value)
     };
-    commit(model, &bytes)
+    commit(model, bytes)
 }
 
 /// Puts every setting of the part being edited back to the keyboard's own.
@@ -659,7 +667,7 @@ fn reset_part(model: &mut Model) -> Command<Effect, Event> {
         .collect();
     commit(
         model,
-        &go_keys::settings(Scope::Part(model.part(index)), &defaults),
+        go_keys::settings(Scope::Part(model.part(index)), &defaults),
     )
 }
 
@@ -682,13 +690,13 @@ fn select(model: &mut Model, id: usize) -> Command<Effect, Event> {
         model.refresh();
     }
     if !model.seamless {
-        return commit(model, &sound(model, index));
+        return commit(model, sound(model, index));
     }
     // The spare takes over: notes still sounding on the other part ring on.
     model.parts[index].playing = parts::idle(model, index);
     let mut bytes = whole_part(model, index);
     bytes.extend(parts::zones(model));
-    commit(model, &bytes)
+    commit(model, bytes)
 }
 
 /// Saves, updates, renames or deletes a preset.
@@ -697,11 +705,12 @@ fn edit_presets(model: &mut Model, event: Event) -> Command<Effect, Event> {
     match event {
         Event::SavePreset { name } => {
             let id = model.presets.iter().map(|p| p.id + 1).max().unwrap_or(1);
-            model.presets.push(Preset {
-                id,
-                name: name.trim().into(),
-                setup,
-            });
+            // Without a name, the one Save new suggests.
+            let name = match name.trim() {
+                "" => view::preset_name(model),
+                name => name.into(),
+            };
+            model.presets.push(Preset { id, name, setup });
             model.loaded = Some(id);
         }
         Event::UpdatePreset(id) => {
@@ -711,8 +720,11 @@ fn edit_presets(model: &mut Model, event: Event) -> Command<Effect, Event> {
             }
         }
         Event::RenamePreset { id, name } => {
-            if let Some(preset) = model.presets.iter_mut().find(|p| p.id == id) {
-                preset.name = name.trim().into();
+            let name = name.trim();
+            if let Some(preset) = model.presets.iter_mut().find(|p| p.id == id)
+                && !name.is_empty()
+            {
+                preset.name = name.into();
             }
         }
         Event::DeletePreset(id) => {
@@ -723,7 +735,7 @@ fn edit_presets(model: &mut Model, event: Event) -> Command<Effect, Event> {
         }
         _ => return Command::done(),
     }
-    commit(model, &[])
+    commit(model, Vec::new())
 }
 
 /// Plays the next (or previous) preset listed, wrapping around.
@@ -750,8 +762,8 @@ fn recall(model: &mut Model, id: u32) -> Command<Effect, Event> {
     model.loaded = Some(id);
     if model.seamless {
         // Each part goes to whichever of its two it isn't sounding on.
-        for (index, &playing) in was_playing.iter().enumerate().take(model.parts.len()) {
-            model.parts[index].playing = playing;
+        for (part, &playing) in model.parts.iter_mut().zip(&was_playing) {
+            part.playing = playing;
         }
         for index in 0..model.parts.len() {
             model.parts[index].playing = parts::idle(model, index);
@@ -762,7 +774,7 @@ fn recall(model: &mut Model, id: u32) -> Command<Effect, Event> {
         Scope::Keyboard,
         &every_keyboard_setting(model),
     ));
-    commit(model, &bytes)
+    commit(model, bytes)
 }
 
 /// Turns seamless switching on or off. Off, each part goes back to its own
@@ -773,7 +785,7 @@ fn set_seamless(model: &mut Model, on: bool) -> Command<Effect, Event> {
     }
     model.seamless = on;
     if on {
-        return commit(model, &[]);
+        return commit(model, Vec::new());
     }
     let mut bytes = Vec::new();
     for index in 0..model.parts.len() {
@@ -784,7 +796,7 @@ fn set_seamless(model: &mut Model, on: bool) -> Command<Effect, Event> {
     }
     bytes.extend(parts::zones(model));
     bytes.extend(parts::others_off(model));
-    commit(model, &bytes)
+    commit(model, bytes)
 }
 
 /// Every setting of part `index`, changed or the keyboard's own; not its
@@ -886,13 +898,31 @@ fn send<'a>(devices: impl Iterator<Item = &'a str>, bytes: &[u8]) -> Command<Eff
 /// After a change: keeps the settings, sends these bytes (if any) to every
 /// connected keyboard and redraws.
 /// Also asks for the sound the Layers tab shows, if it needs reading.
-fn commit(model: &mut Model, bytes: &[u8]) -> Command<Effect, Event> {
-    let mut bytes = bytes.to_vec();
+fn commit(model: &mut Model, mut bytes: Vec<u8>) -> Command<Effect, Event> {
     bytes.extend(layers::reads(model));
-    settings::save(&settings::snapshot(model))
-        .build()
-        .and(send(model.midi.connected(), &bytes))
-        .and(render())
+    let save = if model.stored == Stored::Read {
+        settings::save(&settings::snapshot(model)).build()
+    } else {
+        Command::done()
+    };
+    save.and(send(model.midi.connected(), &bytes)).and(render())
+}
+
+/// The settings kept, read at launch: none the first time. Unreadable,
+/// they're left as they are, for a later build to read.
+fn loaded(model: &mut Model, json: Option<&str>) -> Command<Effect, Event> {
+    let Some(json) = json else {
+        model.stored = Stored::Read;
+        return render();
+    };
+    let Some(settings) = Settings::from_json(json) else {
+        model.stored = Stored::Unreadable;
+        return render();
+    };
+    model.stored = Stored::Read;
+    settings::restore(model, &settings);
+    // A keyboard may have connected while they loaded.
+    send(model.midi.connected(), &state(model)).and(render())
 }
 
 /// Lists `place`.
@@ -965,7 +995,7 @@ fn edit_layers(model: &mut Model, event: &Event) -> Command<Effect, Event> {
         Event::SetWave { group, number } => layers::set_wave(model, group, number),
         _ => return Command::done(),
     };
-    commit(model, &bytes)
+    commit(model, bytes)
 }
 
 /// Whether a MIDI device is a GO:KEYS, which the app connects to by itself:

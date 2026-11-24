@@ -55,7 +55,7 @@ pub fn results(
         .into_iter()
         .filter_map(|id| {
             let patch = catalogue.get(id)?;
-            let wanted = place.bank().is_none_or(|bank| patch.bank() == bank)
+            let wanted = place.bank().is_none_or(|bank| patch.bank() == Some(bank))
                 && place.category().is_none_or(|c| patch.category == c);
             wanted
                 .then(|| query.rank(patch))
@@ -78,7 +78,11 @@ pub fn tree(catalogue: &Catalogue) -> Vec<BankTree> {
         .into_iter()
         .map(|bank| {
             let mut categories: BTreeMap<Category, usize> = BTreeMap::new();
-            for patch in catalogue.patches().iter().filter(|p| p.bank() == bank) {
+            for patch in catalogue
+                .patches()
+                .iter()
+                .filter(|p| p.bank() == Some(bank))
+            {
                 *categories.entry(patch.category).or_default() += 1;
             }
             let total = categories.values().sum();
@@ -95,13 +99,7 @@ pub fn step<T: PartialEq + Copy>(ids: &[T], current: Option<T>, forward: bool) -
     let next = match (position, forward) {
         (None, true) => 0,
         (None, false) => last,
-        (Some(p), true) => {
-            if p == last {
-                0
-            } else {
-                p + 1
-            }
-        }
+        (Some(p), true) => (p + 1) % ids.len(),
         (Some(p), false) => p.checked_sub(1).unwrap_or(last),
     };
     ids.get(next).copied()

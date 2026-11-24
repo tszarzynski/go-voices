@@ -14,10 +14,7 @@ struct LayersContent: View {
 
     var body: some View {
         if let status = layers.status {
-            Text(status)
-                .goKeys(.row, color: GoKeys.dim)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, GoKeys.empty)
+            EmptyMessage(text: status.message)
         } else {
             VStack(alignment: .leading, spacing: GoKeys.section) {
                 // Two by two, however narrow: a card fits half a sheet.
@@ -48,7 +45,7 @@ private struct LayerCard: View {
     let card: LayerCardView
     let keyboard: KeyAxis
     /// The layer copied, to paste onto this one.
-    let paste: String?
+    let paste: PasteView?
     let send: (Event) -> Void
 
     var body: some View {
@@ -91,7 +88,7 @@ private struct LayerCard: View {
         .help("\(card.label): click to edit it; right-click to copy, paste or reset it")
         .contextMenu {
             Button("Copy \(card.label)") { send(.copyLayer(card.layer)) }
-            Button(paste.map { "Paste \($0)" } ?? "Paste") { send(.pasteLayer(card.layer)) }
+            Button(paste.map { "Paste \($0.label)" } ?? "Paste") { send(.pasteLayer(card.layer)) }
                 .disabled(paste == nil)
             Divider()
             Button("Reset \(card.label)") { send(.resetLayers(card.layer)) }
@@ -207,45 +204,19 @@ struct WavePicker: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // As the keyboard sheet: its title, then Done.
-            HStack {
-                Text("Waves").goKeys(.title)
-                Spacer()
-                Button("Done") { send(.searchWaves(nil)) }
-                    .buttonStyle(FlatButtonStyle())
-                    .keyboardShortcut(.defaultAction)
-            }
-            .padding(GoKeys.page)
-            // As the sound list's search field.
-            HStack(spacing: GoKeys.tight) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: GoKeys.t(12)))
-                    .foregroundStyle(GoKeys.dim)
-                TextField("", text: $query, prompt: Text(picker.prompt).foregroundStyle(GoKeys.dim))
-                    .textFieldStyle(.plain)
-                    .font(GoKeysText.row.font)
-                    .foregroundStyle(GoKeys.text)
-                    .autocorrectionDisabled()
-                    .focused($focused)
-                    .onChange(of: query) { _, query in send(.searchWaves(query)) }
-            }
-            .padding(.horizontal, GoKeys.gap)
-            .frame(height: GoKeys.row)
-            .background(GoKeys.background, in: RoundedRectangle(cornerRadius: GoKeys.radius))
-            .overlay {
-                RoundedRectangle(cornerRadius: GoKeys.radius)
-                    .strokeBorder(focused ? Pad.silver.base : GoKeys.line, lineWidth: 1)
-            }
-            .padding([.horizontal, .bottom], GoKeys.page)
+            // As the keyboard sheet and the sound list's search field.
+            SheetHeader(title: "Waves") { send(.searchWaves(nil)) }
+            SearchBox(text: $query, prompt: picker.prompt, focused: $focused) {}
+                .onChange(of: query) { _, query in send(.searchWaves(query)) }
+                .padding([.horizontal, .bottom], GoKeys.page)
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        if let empty = picker.empty {
-                            Text(empty).goKeys(.row, color: GoKeys.dim).padding(.vertical, GoKeys.empty)
-                        }
+                        if let empty = picker.empty { EmptyMessage(text: empty) }
                         // As the sound list: a row high, the one in use
                         // outlined.
-                        ForEach(picker.rows, id: \.self) { row in
+                        // By wave: picking one changes only which is current.
+                        ForEach(picker.rows, id: \.wave) { row in
                             Button { send(.setWave(group: row.group, number: row.number)) } label: {
                                 HStack {
                                     Text(row.name)
@@ -260,14 +231,14 @@ struct WavePicker: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .id(row)
+                            .id(row.wave)
                             .accessibilityAddTraits(row.current ? .isSelected : [])
                         }
                     }
                     .padding(.bottom, GoKeys.page)
                 }
                 .onAppear {
-                    if let current = picker.rows.first(where: \.current) { proxy.scrollTo(current, anchor: .center) }
+                    if let current = picker.rows.first(where: \.current) { proxy.scrollTo(current.wave, anchor: .center) }
                 }
             }
         }
@@ -318,7 +289,7 @@ struct KeyRangeStrip: View {
     }
 
     var body: some View {
-        VStack(spacing: ZoneMap.spacing) {
+        VStack(spacing: GoKeys.gap) {
             GeometryReader { proxy in
                 band(in: proxy.size)
                     .contentShape(Rectangle())
@@ -326,7 +297,7 @@ struct KeyRangeStrip: View {
                     .simultaneousGesture(TapGesture(count: 2).onEnded(reset))
                     .rangeCursor { grip.grab(at: $0, width: proxy.size.width) }
             }
-            .frame(height: ZoneMap.row)
+            .frame(height: GoKeys.row)
             KeyRuler(ticks: ticks, keyboard: keyboard)
         }
         .frame(maxHeight: .infinity, alignment: .top)
@@ -407,4 +378,9 @@ struct KeyRangeStrip: View {
             }
             .onEnded { _ in dragging = nil }
     }
+}
+
+extension WaveRowView {
+    /// Which wave: its group and number.
+    var wave: [UInt16] { [group, number] }
 }

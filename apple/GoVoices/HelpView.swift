@@ -102,7 +102,7 @@ struct AboutView: View {
                             .foregroundStyle(GoKeys.selectedText)
                         Text("Version \(version)").goKeys(.readout, color: GoKeys.dim)
                     }
-                    Text("Browse, arrange and shape the sounds of a Roland GO:KEYS, over Bluetooth MIDI.")
+                    Text("Browse, arrange and shape the sounds of a Roland GO:KEYS, over MIDI: Bluetooth or USB.")
                         .goKeys(.row, color: GoKeys.dim)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: GoKeys.s(300))
@@ -135,7 +135,7 @@ struct AboutView: View {
     @ViewBuilder
     private func row(_ credit: Credit) -> some View {
         let content = HStack(alignment: .firstTextBaseline, spacing: GoKeys.gap) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: GoKeys.tight) {
                 HStack(alignment: .firstTextBaseline, spacing: GoKeys.tight) {
                     Text(credit.name).goKeys(.name)
                     if let author = credit.author {
@@ -154,7 +154,7 @@ struct AboutView: View {
             }
         }
         .padding(.horizontal, GoKeys.page)
-        .padding(.vertical, GoKeys.gap + 2)
+        .padding(.vertical, GoKeys.page)
         .contentShape(Rectangle())
 
         if let url = credit.url, let link = URL(string: url) {
@@ -195,7 +195,7 @@ struct HelpView: View {
         Topic(icon: "magnifyingglass", title: "Finding sounds", points: [
             point("Browse", "a bank or category in the tree, or All sounds, Favourites or Recent."),
             point("Search", "finds sounds by name in whatever is listed."),
-            point("Tap a sound", "to send it to the keyboard; − and + step through the list, as on the keyboard."),
+            point("\(Wording.tap) a sound", "to send it to the keyboard; − and + step through the list, as on the keyboard."),
             point("Star a sound", "to keep it in Favourites."),
         ]),
         Topic(icon: "pianokeys", title: "Splits and layers", points: [
@@ -203,7 +203,7 @@ struct HelpView: View {
             point("Drag a lane's ends", "to set its keys, or its middle to move it. Side by side, parts split the keyboard; over the same keys, they layer."),
             point("Add part", "splits the selected part in two. Remove, in a lane's menu, gives its keys to a neighbour."),
             point("Back to one sound,", "in the menu on the preset's name, keeps only the selected part, on every key."),
-            point("Double-click a lane", "to edit its part."),
+            point("\(Wording.tap == "Tap" ? "Double-tap" : "Double-click") a lane", "to edit its part."),
         ]),
         Topic(icon: "slider.horizontal.3", title: "Editing a part", points: [
             point("EDIT", "opens the Edit panel for the selected part."),
@@ -226,7 +226,7 @@ struct HelpView: View {
         #if os(macOS)
         "In Audio MIDI Setup: Window › Show MIDI Studio › Configure Bluetooth."
         #else
-        "Tap the keyboard button at the top right, then Pair keyboard…."
+        "Tap the keyboard button at the top right, then Pair keyboard…"
         #endif
     }()
 
@@ -238,6 +238,9 @@ struct HelpView: View {
         (["⌘", "E"], "Open or close the Edit panel"),
         (["⌘", "S"], "Save the preset"),
         (["⇧", "⌘", "S"], "Save as a new preset"),
+        (["⌘", "−"], "Smaller text (Compact)"),
+        (["⌘", "="], "Bigger text (Comfortable)"),
+        (["⌘", "?"], "This help"),
     ]
 
     var body: some View {
@@ -245,7 +248,7 @@ struct HelpView: View {
             VStack(alignment: .leading, spacing: GoKeys.section) {
                 HStack(spacing: GoKeys.page) {
                     AppBadge(size: GoKeys.s(44))
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: GoKeys.tight) {
                         Text("Go:Voices Help").goKeys(.title)
                         Text("Pick, arrange and shape the GO:KEYS's sounds.").goKeys(.detail, color: GoKeys.dim)
                     }
@@ -271,7 +274,7 @@ struct HelpView: View {
                                     .lineSpacing(GoKeys.s(3))
                                     .fixedSize(horizontal: false, vertical: true)
                                     .padding(.horizontal, GoKeys.page)
-                                    .padding(.vertical, GoKeys.gap + 2)
+                                    .padding(.vertical, GoKeys.page)
                             }
                         }
                     }
