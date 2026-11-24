@@ -184,10 +184,12 @@ go-voices/
 - [x] Octave words, range and encoding from `part.rs`; part controls derived from the groups {#soc-octave}
 - [x] Shared Swift pieces (`FlatMenu`, `MenuChoice`, `StarButton`, `StatusLine`, compact `FlatButtonStyle`); ids from core values, not labels or positions {#soc-swift}
 - [x] Unused view fields removed; `state` and the split/layer sending merged; `Filters::searching`, `Model::picked_mut`, `Model::octave` {#soc-tidy}
-- [ ] Parked: accessibility and chrome wording from the core {#soc-wording}
-- [ ] Parked: crux-midi keeps typed errors (`Option<MidiError>`), the app's core words them. Do it in one shared crux-midi: bring go-voices' copy (adds `auto_connect_only`) and chord-detector's together, publish to GitHub (ask first), and have both apps depend on it {#crux-midi-shared}
+- [x] Dropped: accessibility and chrome wording from the core. The core works in values and codes; the shell words its own chrome {#soc-wording}
+- [x] crux-midi keeps typed errors (`Option<MidiError>`), the app's core words them. Do it in one shared crux-midi: bring go-voices' copy (adds `auto_connect_only`) and chord-detector's together, publish to GitHub (ask first), and have both apps depend on it {#crux-midi-shared}
+  - [x] Own repo, github.com/tszarzynski/crux-midi, tagged v0.1.0: both copies merged, `status()` a `MidiError`
+  - [x] Both apps depend on it from git (tag v0.1.0); their `libs/crux-midi` copies removed
 ### Zone map (stage 3 of 3)
-- [ ] Up to 4 parts on a key-range bar, replacing Lower/Upper and the split menu {#zone-map}
+- [x] Up to 4 parts on a key-range bar, replacing Lower/Upper and the split menu {#zone-map}
 
 ### Arrangement first (2026-11-24)
 - [x] Presets listed with a small zone map each. (A Sounds | Setups switch at the top was tried and dropped: presets stay in the tree) {#ui-modes}

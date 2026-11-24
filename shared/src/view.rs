@@ -587,7 +587,7 @@ pub fn view_model(model: &Model) -> ViewModel {
         devices_hint: devices_hint(model.platform).into(),
         devices,
         bluetooth: bluetooth_view(model, found),
-        status: model.midi.status().map(String::from),
+        status: model.midi.status().map(ToString::to_string),
     }
 }
 
@@ -725,7 +725,7 @@ fn display(model: &Model, connected: bool, count: &str) -> DisplayView {
         title,
         footnote,
         sound,
-        status: model.midi.status().map(String::from),
+        status: model.midi.status().map(ToString::to_string),
     }
 }
 

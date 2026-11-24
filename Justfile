@@ -22,7 +22,7 @@ test:
 
 # the core builds without std
 check-nostd:
-    cargo build -p catalogue -p crux-midi -p shared --no-default-features --features crux_core/critical-section --target thumbv7em-none-eabihf
+    cargo build -p catalogue -p shared --no-default-features --features crux_core/critical-section --target thumbv7em-none-eabihf
 
 # rebuild the catalogue from GO:Plus's list of sounds
 import-sounds source="../goplus/GO-sounds.md":

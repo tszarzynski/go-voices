@@ -33,7 +33,6 @@ What the app writes to the keyboard, and what we found by trying it, is in [docs
 |---|---|
 | `catalogue/` | The sounds (`data/patches.tsv`), categories, banks, search. `no_std`. |
 | `shared/` | The Crux core: the tree of places, search, selection, favourites and recents, the parts and their keys, the Edit panel's settings and their SysEx, saved settings, the view model. |
-| `libs/crux-midi/` | MIDI device effects and the connection manager (list, connect, reconnect, scan, send). Shared with chord-detector, copied here so this repo builds on its own. |
 | `shared_ffi/` | BoltFFI bridge and Swift type generator. |
 | `apple/` | SwiftUI app for iOS 18 and macOS 15 (XcodeGen). |
 | `tools/import-sounds/` | Rebuilds `patches.tsv` from `GO-sounds.md`. |
@@ -79,7 +78,7 @@ You'll also need a bundle identifier of your own: change `bundleIdPrefix` and `P
 - **[GO Tone Bridge](https://github.com/madbadware/go-tone-bridge)** by madbadware (MIT License): the names of the waves the keyboard's sounds are built from (`catalogue/data/waves.tsv`, see its [`NOTICE`](catalogue/data/NOTICE)), and the knowledge that the GO:KEYS takes the JUNO-DS's whole patch map, which the Layers editor uses.
 - **[Space Grotesk](https://github.com/floriankarsten/space-grotesk)**, © 2020 The Space Grotesk Project Authors, **[JetBrains Mono](https://github.com/JetBrains/JetBrainsMono)**, © 2020 The JetBrains Mono Project Authors, **[Quicksand](https://github.com/andrew-paglinawan/QuicksandFamily)**, © 2011 The Quicksand Project Authors, and **[VT323](https://github.com/google/fonts/tree/main/ofl/vt323)**, © 2011 The VT323 Project Authors: all under the SIL Open Font License 1.1, bundled with their licences in `apple/GoVoices/Resources/Fonts/`.
 - **[Crux](https://github.com/redbadger/crux)** by Red Badger (Apache License 2.0), for the core and its shell, and **[BoltFFI](https://crates.io/crates/boltffi)** for the Swift bridge.
-- `libs/crux-midi` comes from chord-detector, where it was extracted from that app's MIDI connection handling.
+- **[crux-midi](https://github.com/tszarzynski/crux-midi)**, the MIDI devices and connection handling, is its own crate, shared with chord-detector, where it was extracted from that app.
 
 The app icon, the keyboard's round button with GO:V on it, is drawn by `apple/scripts/icon.swift` (see its first lines to run it again).
 
