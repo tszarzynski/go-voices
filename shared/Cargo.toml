@@ -1,6 +1,6 @@
 [package]
 name = "shared"
-version = "0.1.0"
+version = "0.2.0"
 description = "GO Voices' Crux core: browse the GO:KEYS sounds and send them over MIDI"
 edition.workspace = true
 rust-version.workspace = true

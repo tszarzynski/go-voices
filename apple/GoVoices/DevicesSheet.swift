@@ -25,7 +25,7 @@ struct DevicesSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: GoKeys.section) {
                     if let status = view.status {
-                        Display { StatusLine(status: status.message) { send(.dismissStatus) } }
+                        StatusLine(status: status.message) { send(.dismissStatus) }
                     }
                     keyboards
                     playing

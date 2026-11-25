@@ -43,8 +43,7 @@ struct BrowserScreen: View {
                 .frame(width: GoKeys.tree)
                 .panel()
             VStack(spacing: 0) {
-                TargetBar(view: view, searching: searching, send: send)
-                SearchField(view: view, focused: $searching, send: send)
+                TargetBar(view: view, searching: $searching, send: send)
                 ListColumn(view: view, send: send)
             }
             .frame(minWidth: GoKeys.s(300), maxWidth: .infinity)
@@ -73,8 +72,7 @@ struct BrowserScreen: View {
                         split(inspector: inspector)
                     } else {
                         VStack(spacing: 0) {
-                            TargetBar(view: view, searching: searching, send: send)
-                            SearchField(view: view, focused: $searching, send: send)
+                            TargetBar(view: view, searching: $searching, send: send)
                             if showingList {
                                 PlaceHeader(view: view) { showingList = false }
                                 ListColumn(view: view, send: send)
@@ -183,10 +181,11 @@ private struct PlaceTree: View {
                 ForEach(view.places, id: \.place) { place in
                     TreeRow(place: place, icon: place.place.icon) { open(place) }
                 }
-                // As the list's category headings: a row high.
-                Text("Banks")
-                    .goKeys(.heading)
-                    .frame(height: GoKeys.row)
+                // As the list's category headings: small dim capitals, low
+                // in a row's height, close to what they head.
+                Text(caps: "Banks")
+                    .goKeys(.label, color: GoKeys.dim)
+                    .frame(height: GoKeys.row, alignment: .bottom)
                     .padding(.horizontal, GoKeys.page)
                     .accessibilityAddTraits(.isHeader)
                 ForEach(view.banks, id: \.bank.place) { node in
@@ -226,7 +225,7 @@ private struct PlaceTree: View {
 }
 
 /// One row of the tree: a disclosure arrow for a bank, or an icon; the
-/// name; the count. The place the list shows has a dotted grey border.
+/// name; the count. The place the list shows is filled lighter.
 private struct TreeRow: View {
     let place: PlaceView
     var icon: String?
@@ -338,8 +337,6 @@ private struct SearchField: View {
                 .keyboardShortcut("f", modifiers: .command)
                 .hidden()
         }
-        .padding(GoKeys.page)
-        .background(GoKeys.panel)
     }
 }
 
@@ -359,14 +356,14 @@ private struct ListColumn: View {
                 send: send
             )
         } else {
-            PatchList(sections: view.sections, empty: view.empty, current: view.display.sound?.id, send: send)
+            PatchList(sections: view.sections, empty: view.empty, current: view.current?.id, send: send)
                 .equatable()
         }
     }
 }
 
 /// The presets: tap one to play it; its menu updates, renames or deletes it.
-/// What's playing has a dotted grey border, as the current sound in the list.
+/// What's playing is filled lighter, as the current sound in the list.
 private struct PresetList: View {
     let presets: [PresetView]
     let empty: String?
@@ -462,10 +459,13 @@ private struct PatchList: View, Equatable {
                                     .id(row.id)
                             }
                         } header: {
+                            // Small dim capitals, a little apart from the
+                            // sounds above: markers, the sounds carry the
+                            // list. Each the same height, as the rows are.
                             if !section.title.isEmpty {
-                                Text(section.title)
-                                    .goKeys(.heading)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text(caps: section.title)
+                                    .goKeys(.label, color: GoKeys.dim)
+                                    .frame(maxWidth: .infinity, alignment: .bottomLeading)
                                     .frame(height: GoKeys.row)
                                     .padding(.horizontal, GoKeys.page)
                                     .background(GoKeys.panel)
@@ -476,16 +476,36 @@ private struct PatchList: View, Equatable {
                 }
             }
             .background(GoKeys.panel)
-            .onChange(of: current) { _, id in
+            .onChange(of: current) { old, id in
                 guard let id else { return }
-                withAnimation { proxy.scrollTo(id) }
+                let ease = Animation.easeOut(duration: 0.35)
+                let ids = sections.flatMap(\.rows).map(\.id)
+                guard let to = ids.firstIndex(of: id) else { return }
+                // Every row is the same height, so one scroll lands true.
+                if let from = old.flatMap({ ids.firstIndex(of: $0) }), abs(to - from) <= 8 {
+                    // Nearby (a step, a click): only as far as shows it and
+                    // the row past it, so it's clear of the pinned heading
+                    // going up; eased.
+                    let past = ids[min(max(to + (to < from ? -1 : 1), 0), ids.count - 1)]
+                    withAnimation(ease) { proxy.scrollTo(past) }
+                } else {
+                    // Far off, or not listed before: straight to a few rows
+                    // short of it, then eased the rest of the way, to the
+                    // middle.
+                    let from = old.flatMap { ids.firstIndex(of: $0) } ?? 0
+                    let short = ids[min(max(to + (to > from ? -3 : 3), 0), ids.count - 1)]
+                    proxy.scrollTo(short, anchor: .center)
+                    DispatchQueue.main.async {
+                        withAnimation(ease) { proxy.scrollTo(id, anchor: .center) }
+                    }
+                }
             }
         }
     }
 }
 
 /// One sound on one line: tap to send it, star to keep it. The current one
-/// has a dotted grey border.
+/// is filled lighter.
 private struct PatchRow: View {
     let row: RowView
     let current: Bool
@@ -514,7 +534,7 @@ private struct PatchRow: View {
         // The trailing inset keeps the star clear of the scroll bar.
         .padding(.leading, GoKeys.page)
         .padding(.trailing, Self.scrollBarInset)
-        // The current sound has a dotted grey border, as the selected place in the tree.
+        // The current sound is filled lighter, as the selected place in the tree.
         .selectedRim(current)
         .background(GoKeys.panel)
     }
@@ -542,12 +562,14 @@ private struct Arrangement: View {
     let openDevices: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GoKeys.page) {
+        // The preset's row a little apart from the strips, so it reads as
+        // their title, not one of them.
+        VStack(alignment: .leading, spacing: GoKeys.page + GoKeys.tight) {
             HStack(spacing: GoKeys.gap) {
                 ArrangementBar(view: view, send: send)
                 KeyboardButton(connection: view.connection, open: openDevices)
             }
-            ZoneMap(layout: view.layout, send: send)
+            ZoneMap(layout: view.layout, current: view.current, editorOpen: view.editor != nil, send: send)
         }
         .padding(GoKeys.page)
         .background(GoKeys.panel)
@@ -658,50 +680,65 @@ extension View {
 
 // MARK: - Target
 
-/// Over the list: the display for the selected part, where the next pick
-/// goes, with − and + beside it, as on the keyboard's
-/// panel, and Edit for that part.
+/// Over the list: an error, if there is one, and the search. With no
+/// buttons: ↑ and ↓ (or ⌘← and ⌘→) step the selected part's sound, ⌘1 to
+/// ⌘4 select a part.
 private struct TargetBar: View {
     let view: ViewModel
     /// The search field has the keyboard: ⌘← and ⌘→ are its, then.
-    let searching: Bool
+    var searching: FocusState<Bool>.Binding
     let send: (Event) -> Void
 
     var body: some View {
-        HStack(spacing: GoKeys.gap) {
-            Display { DisplayText(view: view, send: send) }
-            HStack(spacing: GoKeys.s(10)) {
-                stepButton("minus", label: "Previous", event: .previous, key: .leftArrow)
-                stepButton("plus", label: "Next", event: .next, key: .rightArrow)
+        VStack(spacing: GoKeys.page) {
+            if let status = view.status {
+                StatusLine(status: status.message) { send(.dismissStatus) }
             }
-            Button { send(.toggleEditor) } label: {
-                Text(caps: "Edit").font(GoKeysText.label.font).tracking(GoKeysText.label.tracking)
-            }
-            .buttonStyle(RoundButtonStyle(on: view.editor != nil))
-            // + to EDIT: the space between two knobs' rings in the Edit panel.
-            .padding(.leading, GoKeys.s(34) - GoKeys.gap)
-            .keyboardShortcut("e", modifiers: .command)
-            .help(view.editor == nil ? "Edit the selected part (⌘E)" : "Close the Edit panel (⌘E)")
-            .accessibilityLabel("Edit")
-            .accessibilityAddTraits(view.editor != nil ? .isSelected : [])
-            .accessibilityHint("Edits the selected part")
+            bar
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .padding([.horizontal, .top], GoKeys.page)
+        .padding(GoKeys.page)
         .background(GoKeys.panel)
     }
 
-    private func stepButton(_ symbol: String, label: String, event: Event, key: KeyEquivalent) -> some View {
-        Button { send(event) } label: {
-            Image(systemName: symbol)
-                .font(.system(size: GoKeys.t(17), weight: .bold))
-        }
-        .buttonStyle(RoundButtonStyle())
-        .keyboardShortcut(searching ? nil : KeyboardShortcut(key, modifiers: .command))
-        .help(event == .next ? "Next sound in the list (⌘→)" : "Previous sound in the list (⌘←)")
-        .accessibilityLabel(label)
+    private var bar: some View {
+        SearchField(view: view, focused: searching, send: send)
+            // In the field too: it has one line, so ↑ and ↓ are free.
+            .onKeyPress(.upArrow) {
+                send(.previous)
+                return .handled
+            }
+            .onKeyPress(.downArrow) {
+                send(.next)
+                return .handled
+            }
+            .background {
+                // ↑ and ↓, or ⌘← and ⌘→, step the selected part's sound
+                // through the list; ⌘1 to ⌘4 pick a part. No buttons.
+                ZStack {
+                    step(.previous, key: .upArrow, modifiers: [])
+                    step(.next, key: .downArrow, modifiers: [])
+                    step(.previous, key: .leftArrow, modifiers: .command)
+                    step(.next, key: .rightArrow, modifiers: .command)
+                    // ⌘1 to ⌘4 select that part, searching or not.
+                    ForEach(view.layout.zones, id: \.part) { zone in
+                        Button(zone.title) { send(.editPart(zone.part)) }
+                            .keyboardShortcut(KeyEquivalent(Character("\(zone.part + 1)")), modifiers: .command)
+                            .opacity(0)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
     }
 
+    /// Off while searching: the keys move the field's cursor then.
+    private func step(_ event: Event, key: KeyEquivalent, modifiers: EventModifiers) -> some View {
+        Button(event == .next ? "Next sound" : "Previous sound") { send(event) }
+            .keyboardShortcut(searching.wrappedValue ? nil : KeyboardShortcut(key, modifiers: modifiers))
+            .opacity(0)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
 }
 
 // MARK: - Edit panel
@@ -728,12 +765,11 @@ private struct EditorPanel: View {
                     }
                 }
                 .fixedSize()
-                // What it edits, for VoiceOver: the lane and the display show
-                // it. On the tabs alone, so the controls keep their own names.
+                // What it edits, for VoiceOver: the lit lane shows it. On the tabs alone, so the controls keep their own names.
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel(editor.title)
                 Spacer(minLength: GoKeys.gap)
-                // Closed with Edit, beside the display.
+                // Closed with Edit, on the lit lane.
                 Button("Reset") { send(.resetEditor) }
                 .help("Put this tab's settings back as the sound has them")
                 .buttonStyle(FlatButtonStyle())
@@ -756,53 +792,6 @@ private struct EditorPanel: View {
         .background(GoKeys.panel)
         .sheet(isPresented: Binding(get: { waves != nil }, set: { if !$0 { send(.searchWaves(nil)) } })) {
             if let waves { WavePicker(picker: waves, send: send) }
-        }
-    }
-}
-
-/// One display: `[HEADING]` and the address, the title and the star, and
-/// the footnote or an error.
-private struct DisplayText: View {
-    let view: ViewModel
-    let send: (Event) -> Void
-
-    private var display: DisplayView { view.display }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: GoKeys.tight) {
-                Text("[\(display.heading.uppercased())]")
-                    .goKeys(.displaySmall, color: GoKeys.displayText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Spacer(minLength: GoKeys.tight)
-                if let sound = display.sound {
-                    // The bank goes first when space is short.
-                    ViewThatFits(in: .horizontal) {
-                        Text("\(sound.bank) \(sound.address)").goKeys(.displaySmall, color: GoKeys.displayText)
-                        Text(sound.address).goKeys(.displaySmall, color: GoKeys.displayText)
-                    }
-                    .lineLimit(1)
-                }
-            }
-            HStack(spacing: GoKeys.tight) {
-                Text(display.title(count: view.count))
-                    .goKeys(.displayLarge, color: GoKeys.displayText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                Spacer(minLength: 0)
-                if let sound = display.sound {
-                    StarButton(on: sound.favourite) { send(.toggleFavourite(sound.id)) }
-                }
-            }
-            if let status = view.status {
-                StatusLine(status: status.message) { send(.dismissStatus) }
-            } else {
-                Text(display.footnote(connected: view.connection.state == .connected, channel: view.channel))
-                    .goKeys(.displaySmall, color: GoKeys.displayDim)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-            }
         }
     }
 }

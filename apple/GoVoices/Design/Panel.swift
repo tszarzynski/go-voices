@@ -4,7 +4,7 @@ import SwiftUI
 import AppKit
 #endif
 
-/// The one dotted outline: on what's selected in a list, and on Add part.
+/// The one dotted outline: on the selected layer card, and on Add part.
 struct DottedOutline: View {
     var body: some View {
         RoundedRectangle(cornerRadius: GoKeys.radius)
@@ -19,24 +19,24 @@ extension View {
     }
 }
 
-/// The mark on what's selected in a list: a dotted grey border, as Add
-/// part's.
+/// The mark on what's selected in a list: a lighter fill behind it, its
+/// text brighter (as the rows set it).
 struct SelectedRim: ViewModifier {
     let on: Bool
 
     func body(content: Content) -> some View {
-        content.overlay {
+        content.background {
             if on {
-                DottedOutline()
+                RoundedRectangle(cornerRadius: GoKeys.radius)
+                    .fill(GoKeys.control)
                     .padding(.horizontal, GoKeys.tight)
-                    .allowsHitTesting(false)
             }
         }
     }
 }
 
 extension View {
-    /// A dotted grey border while `on`.
+    /// A lighter fill while `on`.
     func selectedRim(_ on: Bool) -> some View { modifier(SelectedRim(on: on)) }
 }
 
@@ -62,31 +62,23 @@ struct FlatButtonStyle: ButtonStyle {
     }
 }
 
-/// A round button as on the GO:KEYS panel: the panel's grey, with a red
-/// rim and a white symbol. Pressed, the face lightens; `on`, it's red.
-struct RoundButtonStyle: ButtonStyle {
+/// A round button drawn on a pad, as printed on a display: an outline in
+/// the pad's text colour; `on`, filled with it.
+struct OutlineButtonStyle: ButtonStyle {
+    let pad: Pad
     var on = false
 
-    private var size: CGFloat { GoKeys.s(52) }
-    /// The red ring's width.
-    private let rim: CGFloat = 2.5
+    private var size: CGFloat { GoKeys.s(40) }
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundStyle(GoKeys.selectedText)
+            .foregroundStyle(on ? pad.base : pad.text)
             .frame(width: size, height: size)
             .background {
-                // The rim, then the face set into it: two fills draw a
-                // cleaner ring than a stroke.
-                ZStack {
-                    Circle().fill(GoKeys.accent)
-                    Circle()
-                        .fill(configuration.isPressed ? GoKeys.controlPressed : (on ? GoKeys.accent : GoKeys.panel))
-                        .padding(rim)
-                }
+                Circle().fill(on ? pad.text : .clear)
+                Circle().strokeBorder(pad.text, lineWidth: 2)
             }
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
-            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+            .opacity(configuration.isPressed ? 0.7 : 1)
             .contentShape(Circle())
             .focusEffectDisabled()
     }
@@ -103,22 +95,6 @@ struct LedDot: View {
         Circle().fill(color)
             .overlay { Circle().strokeBorder(GoKeys.text.opacity(0.5), lineWidth: 1) }
             .frame(width: size, height: size)
-    }
-}
-
-/// The display: a backlit amber LCD with dark dot-matrix text.
-struct Display<Content: View>: View {
-    @ViewBuilder let content: Content
-    /// Dark: the backlight turned down a little.
-    @AppStorage(Look.key) private var look = Look.red
-
-    var body: some View {
-        content
-            .padding(.horizontal, GoKeys.gap)
-            .padding(.vertical, GoKeys.s(6))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(look.display, in: RoundedRectangle(cornerRadius: GoKeys.radius))
-            .overlay { RoundedRectangle(cornerRadius: GoKeys.radius).strokeBorder(GoKeys.line, lineWidth: 2) }
     }
 }
 
@@ -181,7 +157,7 @@ struct MenuChoice: View {
 /// A star: filled when the sound is starred.
 struct StarButton: View {
     let on: Bool
-    var color: Color = GoKeys.displayText
+    var color: Color = GoKeys.dim
     /// A larger tap target, for list rows.
     var target: CGFloat?
     let action: () -> Void
@@ -200,23 +176,31 @@ struct StarButton: View {
     }
 }
 
-/// An error, on a display, with a button to dismiss it.
+/// An error, on a wine pad, with a button to dismiss it.
 struct StatusLine: View {
     let status: String
     let dismiss: () -> Void
 
     var body: some View {
-        HStack {
-            Text("! \(status)").goKeys(.displaySmall, color: GoKeys.displayText).lineLimit(1)
+        HStack(spacing: GoKeys.gap) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: GoKeys.t(11)))
+                .foregroundStyle(Pad.wine.dim)
+            Text(status).goKeys(.row, color: Pad.wine.text)
+                .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: GoKeys.tight)
             Button(action: dismiss) {
                 Image(systemName: "xmark")
                     .font(.system(size: GoKeys.t(10), weight: .bold))
-                    .foregroundStyle(GoKeys.displayText)
+                    .foregroundStyle(Pad.wine.dim)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Dismiss")
         }
+        .padding(.horizontal, GoKeys.page)
+        .padding(.vertical, GoKeys.gap)
+        .frame(minHeight: GoKeys.row)
+        .background { PadFill(pad: .wine) }
     }
 }
 
@@ -652,13 +636,18 @@ extension View {
     }
 }
 
-/// The arrangement: one lane per part across the keyboard's keys, each
-/// part a band in its colour from its lowest to its highest key. Tap a band
+/// The arrangement, the screen's centre: one lane per part across the
+/// keyboard's keys, each part a band from its lowest to its highest key,
+/// the selected one lit and twice as tall, with its sound's star and Edit. Tap a band
 /// to pick sounds for that part, double-tap to edit it; drag either end to
 /// move that end, or the middle to move the whole band. Each part's keys
 /// move on their own: overlapping bands are layered.
 struct ZoneMap: View {
     let layout: LayoutView
+    /// The selected part's sound.
+    let current: CurrentView?
+    /// The Edit panel is open.
+    let editorOpen: Bool
     let send: (Event) -> Void
 
     private var keyboard: KeyAxis { KeyAxis(first: layout.first, last: layout.last) }
@@ -668,7 +657,7 @@ struct ZoneMap: View {
     var body: some View {
         VStack(spacing: GoKeys.gap) {
             ForEach(layout.zones, id: \.part) { zone in
-                ZoneLane(zone: zone, keyboard: keyboard, send: send)
+                ZoneLane(zone: zone, current: zone.editing ? current : nil, editorOpen: editorOpen, keyboard: keyboard, send: send)
             }
             if layout.canAdd {
                 AddPartLane(send: send)
@@ -746,8 +735,12 @@ struct KeyRuler: View {
 /// One part's lane: its band, over the keys it plays.
 private struct ZoneLane: View {
     let zone: ZoneView
+    /// Its sound, if it's the selected part's.
+    let current: CurrentView?
+    let editorOpen: Bool
     let keyboard: KeyAxis
     let send: (Event) -> Void
+    @AppStorage(Look.key) private var look = Look.red
 
     /// What's being dragged, and the key it's on, while dragging.
     @State private var dragging: (grip: RangeGrip.Grip, at: Int)?
@@ -769,7 +762,8 @@ private struct ZoneLane: View {
             .gesture(drag(in: size))
             .rangeCursor { range.grab(at: $0, width: size.width) }
         }
-        .frame(height: GoKeys.row)
+        // The selected part twice as tall: its sound on two lines, and Edit.
+        .frame(height: zone.editing ? GoKeys.row * 2 + GoKeys.gap : GoKeys.row)
         .help("\(zone.title): click to pick its sound, double-click to edit it. Drag an end to set its keys, or the middle to move them.")
         .contextMenu {
             Button("Edit \(zone.title)") { send(.openEditor(zone.part)) }
@@ -787,35 +781,90 @@ private struct ZoneLane: View {
 
     private func band(in size: CGSize) -> some View {
         let (from, to) = range.edges(width: size.width)
-        // The selected part in the keyboard's grey pads, as a selection in
-        // the lists; the others in its wine-red ones.
-        let pad: Pad = zone.editing ? .silver : .wine
+        // The selected part lit, as the keyboard's display; the others in
+        // its silver pads.
+        let pad: Pad = zone.editing ? look.lit : .silver
         let text = pad.text
         let dim = pad.dim
         return ZStack(alignment: .leading) {
             PadFill(pad: pad)
-            HStack(spacing: GoKeys.gap) {
-                Text(zone.sound)
-                    .font(GoKeysText.name.font)
-                    .foregroundStyle(text)
-                    .lineLimit(1)
-                    .layoutPriority(2)
-                if !zone.category.isEmpty {
-                    Text(zone.category).goKeys(.detail, color: dim).lineLimit(1)
-                }
-                Spacer(minLength: 0)
-                // The core's words for its keys, updated as it moves.
-                Text(zone.keys)
-                    .goKeys(.readout, color: dragging == nil ? dim : text)
-                    .lineLimit(1)
-                    .layoutPriority(dragging == nil ? 0 : 3)
+            if zone.editing {
+                selected(pad)
+            } else {
+                line(pad)
             }
-            .padding(.horizontal, GoKeys.gap)
             GripMarks(color: dim)
         }
         .frame(width: max(to - from, 4), height: size.height)
         .clipped()
         .offset(x: from)
+    }
+
+    /// The selected part: its sound, category and star over its keys; Edit
+    /// at its end.
+    private func selected(_ pad: Pad) -> some View {
+        HStack(spacing: GoKeys.gap) {
+            VStack(alignment: .leading, spacing: GoKeys.tight) {
+                HStack(alignment: .firstTextBaseline, spacing: GoKeys.gap) {
+                    Text(number).goKeys(.readout, color: pad.dim)
+                    // The strips' own type, larger: it leads, without
+                    // competing with the preset's title.
+                    Text(zone.sound)
+                        .font(.ui(21, weight: .semibold, relativeTo: .title3))
+                        .foregroundStyle(pad.text)
+                        .lineLimit(1)
+                        .layoutPriority(2)
+                    if !zone.category.isEmpty {
+                        Text(zone.category).goKeys(.detail, color: pad.dim).lineLimit(1)
+                    }
+                    if let current {
+                        StarButton(on: current.favourite, color: current.favourite ? pad.text : pad.dim) {
+                            send(.toggleFavourite(current.id))
+                        }
+                    }
+                }
+                Text(zone.keys)
+                    .goKeys(.readout, color: dragging == nil ? pad.dim : pad.text)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Button { send(.toggleEditor) } label: {
+                Text(caps: "Edit").font(GoKeysText.label.font).tracking(GoKeysText.label.tracking)
+            }
+            .buttonStyle(OutlineButtonStyle(pad: pad, on: editorOpen))
+            .keyboardShortcut("e", modifiers: .command)
+            .help(editorOpen ? "Close the Edit panel (⌘E)" : "Edit this part (⌘E)")
+            .accessibilityLabel("Edit")
+            .accessibilityAddTraits(editorOpen ? .isSelected : [])
+        }
+        .padding(.leading, GoKeys.page)
+        // Clear of the end's grip.
+        .padding(.trailing, GoKeys.page + GoKeys.tight)
+    }
+
+    /// Its number, `[1]`: the key that selects it.
+    private var number: String { "[\(zone.part + 1)]" }
+
+    /// Another part, on one line: its sound and category, and its keys.
+    private func line(_ pad: Pad) -> some View {
+        HStack(spacing: GoKeys.gap) {
+            Text(number).goKeys(.readout, color: pad.dim)
+            Text(zone.sound)
+                .font(GoKeysText.name.font)
+                .foregroundStyle(pad.text)
+                .lineLimit(1)
+                .layoutPriority(2)
+            if !zone.category.isEmpty {
+                Text(zone.category).goKeys(.detail, color: pad.dim).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            // The core's words for its keys, updated as it moves.
+            Text(zone.keys)
+                .goKeys(.readout, color: dragging == nil ? pad.dim : pad.text)
+                .lineLimit(1)
+                .layoutPriority(dragging == nil ? 0 : 3)
+        }
+        .padding(.horizontal, GoKeys.gap)
     }
 
     private func drag(in size: CGSize) -> some Gesture {
@@ -855,14 +904,17 @@ private struct ZoneLane: View {
     }
 }
 
-/// The GO:KEYS pads' two finishes: dotted, silver-grey and wine-red.
+/// The GO:KEYS pads' finishes: dotted, silver-grey and wine-red; and lit
+/// amber, as a backlit LCD, for the selected part.
 enum Pad {
-    case silver, wine
+    case silver, wine, lit, litDark
 
     private var baseHex: UInt32 {
         switch self {
         case .silver: GoKeys.silver
         case .wine: GoKeys.wine
+        case .lit: GoKeys.lit
+        case .litDark: GoKeys.litDark
         }
     }
 
@@ -870,6 +922,8 @@ enum Pad {
         switch self {
         case .silver: GoKeys.silverDots
         case .wine: GoKeys.wineDots
+        case .lit: GoKeys.litDots
+        case .litDark: GoKeys.litDarkDots
         }
     }
 
@@ -880,6 +934,7 @@ enum Pad {
         switch self {
         case .silver: GoKeys.onSilver
         case .wine: GoKeys.onWine
+        case .lit, .litDark: GoKeys.onLit
         }
     }
 
@@ -888,6 +943,7 @@ enum Pad {
         switch self {
         case .silver: GoKeys.onSilverDim
         case .wine: GoKeys.onWineDim
+        case .lit, .litDark: GoKeys.onLitDim
         }
     }
 
@@ -897,11 +953,15 @@ enum Pad {
         switch self {
         case .silver: Self.silverTile
         case .wine: Self.wineTile
+        case .lit: Self.litTile
+        case .litDark: Self.litDarkTile
         }
     }
 
     private static let silverTile = Pad.silver.makeTile()
     private static let wineTile = Pad.wine.makeTile()
+    private static let litTile = Pad.lit.makeTile()
+    private static let litDarkTile = Pad.litDark.makeTile()
 
     /// Two rows of dots a pitch apart, the second offset half a pitch, as a
     /// perforated sheet; at twice the points, for sharp dots.

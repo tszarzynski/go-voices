@@ -1,9 +1,8 @@
 import App
 import Foundation
 
-/// The shell's words for what the core sends as values: errors, states,
-/// hints and the display's lines. The core works in values; the chrome is
-/// worded here.
+/// The shell's words for what the core sends as values: errors, states and
+/// hints. The core works in values; the chrome is worded here.
 enum Wording {
     #if os(macOS)
     /// "Click" on the Mac, "Tap" elsewhere.
@@ -11,6 +10,16 @@ enum Wording {
     #else
     static let tap = "Tap"
     #endif
+
+    /// On the Mac, how the keys step through the list; the clause is empty
+    /// elsewhere, where there are none.
+    static var steps: String {
+        #if os(macOS)
+        "; ↑ and ↓ step through them"
+        #else
+        ""
+        #endif
+    }
 
     /// `Channel 4`.
     static func channel(_ channel: UInt8) -> String { "Channel \(channel)" }
@@ -113,36 +122,4 @@ extension DeviceView {
 extension PasteView {
     /// `Layer 2 of JUNO Piano 1`.
     var label: String { "Layer \(layer + 1) of \(sound ?? "this sound")" }
-}
-
-extension DisplayView {
-    /// `2 · Acoustic piano`, `Acoustic piano`, or the app's name.
-    var heading: String {
-        switch (sound, several) {
-        case (nil, false): "Go:Voices"
-        case (nil, true): "\(part)"
-        case let (sound?, false): sound.category
-        case let (sound?, true): "\(part) · \(sound.category)"
-        }
-    }
-
-    /// The sound's name; with nothing picked, how many are listed.
-    func title(count: String) -> String {
-        switch (sound, several) {
-        case let (sound?, _): sound.name
-        case (nil, false): count
-        case (nil, true): "—"
-        }
-    }
-
-    /// The part's keys when there are several; otherwise what happens to a
-    /// pick.
-    func footnote(connected: Bool, channel: UInt8) -> String {
-        switch (sound != nil, several, connected) {
-        case (_, true, _): keys
-        case (false, false, _): "\(Wording.tap) a sound to play it on your keyboard"
-        case (true, false, true): "Sent on channel \(channel)"
-        case (true, false, false): "Sent when a keyboard connects"
-        }
-    }
 }

@@ -3,8 +3,8 @@ import OSLog
 import SwiftUI
 
 /// Design tokens: flat greys with the GO:KEYS red as the one accent, in the
-/// spirit of a DAW's browser. The display is a Roland-style backlit orange
-/// LCD. One look: no light/dark variants.
+/// spirit of a DAW's browser. The selected part is lit amber, as a
+/// Roland backlit LCD. A Red or a Dark frame; nothing else changes.
 enum GoKeys {
     /// The keyboard's red: its body, the round buttons' rims, what's on,
     /// and what's changed (Edited, a changed knob's ring).
@@ -42,10 +42,14 @@ enum GoKeys {
     static let onWine = text
     static let onWineDim = Color(hex: 0xC29A9D)
 
-    // The display: a backlit amber LCD with dark pixels, after the JUNO-G.
-    static let display = Color(hex: 0xFF7A0F)
-    static let displayText = Color(hex: 0x2E0F00)
-    static let displayDim = Color(hex: 0x823A06) // its unlit pixels' shade
+    // The selected part: lit, as a backlit amber LCD, with dark text.
+    static let lit: UInt32 = 0xFF7A0F
+    static let litDots: UInt32 = 0xF06E08
+    /// In the Dark theme, turned down a little so it doesn't glare.
+    static let litDark: UInt32 = 0xE06A10
+    static let litDarkDots: UInt32 = 0xD2620C
+    static let onLit = Color(hex: 0x2E0F00)
+    static let onLitDim = Color(hex: 0x6E3005)
 
     // LEDs, and the favourite star's amber.
     static let green = Color(hex: 0x4CD964)
@@ -113,10 +117,9 @@ enum GoKeys {
 
     /// Registers the bundled fonts (all SIL OFL) with CoreText, after the
     /// GO:KEYS panel: Quicksand for its labels, Space Grotesk for controls
-    /// and text, JetBrains Mono for readouts, VT323 for the display's dot
-    /// matrix.
+    /// and text, JetBrains Mono for readouts.
     static func registerFonts() {
-        for name in ["SpaceGrotesk-Variable", "Quicksand-Variable", "JetBrainsMono-Variable", "VT323-Regular"] {
+        for name in ["SpaceGrotesk-Variable", "Quicksand-Variable", "JetBrainsMono-Variable"] {
             // Missing or refused, the system font stands in: say so.
             guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else {
                 fontLog.error("font \(name, privacy: .public) isn't in the app")
@@ -182,12 +185,11 @@ enum Look: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The LCD's backlight: in the dark, turned down a little so it
-    /// doesn't glare.
-    var display: Color {
+    /// The selected part's finish: lit, a little less in the dark.
+    var lit: Pad {
         switch self {
-        case .red: GoKeys.display
-        case .dark: Color(hex: 0xE06A10)
+        case .red: .lit
+        case .dark: .litDark
         }
     }
 }
@@ -250,10 +252,6 @@ enum GoKeysText {
     case readout
     /// The note names on the drawn keyboard.
     case tick
-    /// The display's small line.
-    case displaySmall
-    /// The display's patch name.
-    case displayLarge
 
     var font: Font {
         switch self {
@@ -265,8 +263,6 @@ enum GoKeysText {
         case .detail: .ui(11, relativeTo: .caption)
         case .readout: .ui(11, relativeTo: .caption, family: GoKeys.readoutFace)
         case .tick: .ui(10, weight: .bold, relativeTo: .caption2, family: GoKeys.labelFace)
-        case .displaySmall: .custom("VT323-Regular", size: GoKeys.t(18), relativeTo: .callout)
-        case .displayLarge: .custom("VT323-Regular", size: GoKeys.t(30), relativeTo: .title2)
         }
     }
 
@@ -274,7 +270,7 @@ enum GoKeysText {
         switch self {
         case .label: 0.6
         case .title: 1.2
-        case .row, .name, .heading, .detail, .readout, .tick, .displaySmall, .displayLarge: 0
+        case .row, .name, .heading, .detail, .readout, .tick: 0
         }
     }
 }

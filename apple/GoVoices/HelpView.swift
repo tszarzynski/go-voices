@@ -61,7 +61,7 @@ struct AboutView: View {
                role: "The core the app is built around",
                url: "https://github.com/redbadger/crux"),
         Credit(name: "Fonts", author: nil,
-               role: "Quicksand, Space Grotesk, JetBrains Mono and VT323, under the SIL Open Font License",
+               role: "Quicksand, Space Grotesk and JetBrains Mono, under the SIL Open Font License",
                url: nil),
     ]
 
@@ -173,18 +173,18 @@ struct HelpView: View {
         Topic(icon: "magnifyingglass", title: "Finding sounds", points: [
             point("Browse", "a bank or category in the tree, or All sounds, Favourites or Recent."),
             point("Search", "finds sounds by name in whatever is listed."),
-            point("\(Wording.tap) a sound", "to send it to the keyboard; − and + step through the list, as on the keyboard."),
+            point("\(Wording.tap) a sound", "to send it to the keyboard\(Wording.steps)."),
             point("Star a sound", "to keep it in Favourites."),
         ]),
         Topic(icon: "pianokeys", title: "Splits and layers", points: [
-            point("Each lane is a part:", "a sound on its own keys, up to four. The silver one is selected: the sound you pick goes to it."),
+            point("Each lane is a part:", "a sound on its own keys, up to four. The lit one is selected: the sound you pick goes to it."),
             point("Drag a lane's ends", "to set its keys, or its middle to move it. Side by side, parts split the keyboard; over the same keys, they layer."),
             point("Add part", "splits the selected part in two. Remove, in a lane's menu, gives its keys to a neighbour."),
             point("Back to one sound,", "in the menu on the preset's name, keeps only the selected part, on every key."),
             point("\(Wording.tap == "Tap" ? "Double-tap" : "Double-click") a lane", "to edit its part."),
         ]),
         Topic(icon: "slider.horizontal.3", title: "Editing a part", points: [
-            point("EDIT", "opens the Edit panel for the selected part."),
+            point("EDIT,", "on the lit lane, opens the Edit panel for its part."),
             point("Sound:", "level, pan, octave, tuning, tone, envelope, vibrato and effect sends."),
             point("Layers:", "the sound itself, up to four layers, each with its wave, keys, velocities, filter, envelopes and LFOs. Solo one to hear it alone."),
             point("Changed settings", "show a red ring; Reset puts the tab back as the sound has it."),
@@ -192,7 +192,7 @@ struct HelpView: View {
         Topic(icon: "square.stack", title: "Presets", points: [
             point("A preset keeps everything:", "the parts, their sounds, keys and edits."),
             point("Save one", "from the menu on its name, at the top left; once it's changed, Save updates it."),
-            point("Play a set:", "presets are in the tree, and − and + step through them in order."),
+            point("Play a set:", "presets are in the tree, in order\(Wording.steps)."),
         ]),
         Topic(icon: "gearshape", title: "The keyboard sheet", points: [
             point("Keyboards", "to connect, the MIDI channel, and the reverb and chorus every part shares."),
@@ -211,8 +211,9 @@ struct HelpView: View {
     private let shortcuts: [([String], String)] = [
         (["⌘", "F"], "Search"),
         (["esc"], "Clear the search"),
-        (["⌘", "←"], "Previous sound or preset"),
-        (["⌘", "→"], "Next sound or preset"),
+        (["↑"], "Previous sound or preset (or ⌘←)"),
+        (["↓"], "Next sound or preset (or ⌘→)"),
+        (["⌘", "1–4"], "Select a part"),
         (["⌘", "E"], "Open or close the Edit panel"),
         (["⌘", "S"], "Save the preset"),
         (["⇧", "⌘", "S"], "Save as a new preset"),

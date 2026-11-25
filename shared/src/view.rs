@@ -10,7 +10,7 @@ use alloc::{
     vec::Vec,
 };
 
-use catalogue::{Bank, Patch};
+use catalogue::Patch;
 use crux_midi::{
     LinkState,
     effects::{MidiDevice, MidiError, Transport},
@@ -55,8 +55,8 @@ pub struct ViewModel {
     pub count: String,
     /// What to say when the list is empty.
     pub empty: Option<String>,
-    /// The display: the part being edited, where the next pick goes.
-    pub display: DisplayView,
+    /// The selected part's sound, if it has one: where the next pick goes.
+    pub current: Option<CurrentView>,
     /// The parts on the zone map.
     pub layout: LayoutView,
     /// The Edit panel, while it's showing beside the sound list.
@@ -152,19 +152,11 @@ pub struct RowView {
     pub favourite: bool,
 }
 
-/// The patch picked last.
+/// The selected part's sound: marked in the list, starred on its lane.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct CurrentView {
-    /// For `ToggleFavourite`.
+    /// For `ToggleFavourite`, and to find it in the list.
     pub id: u32,
-    /// The patch's name.
-    pub name: String,
-    /// Its category's name, `Acoustic piano`.
-    pub category: String,
-    /// Its bank's name, `JUNO-DS`.
-    pub bank: String,
-    /// Its address, `87·64·004`.
-    pub address: String,
     /// Starred.
     pub favourite: bool,
 }
@@ -205,19 +197,6 @@ pub struct LoadedView {
     pub name: String,
     /// What's playing has changed since: there's something to save.
     pub edited: bool,
-}
-
-/// The display: the part being edited's sound.
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
-pub struct DisplayView {
-    /// The part, from 1.
-    pub part: u8,
-    /// There's more than one part, so the display says which.
-    pub several: bool,
-    /// The part's keys and octave: `Up to B3 · Oct −1`.
-    pub keys: String,
-    /// Its sound.
-    pub sound: Option<CurrentView>,
 }
 
 /// The zone map: the parts and their keys.
@@ -541,7 +520,7 @@ pub fn view_model(model: &Model) -> ViewModel {
         }),
         count: count(filters.searching(), listed, noun),
         empty: (listed == 0).then(|| empty_text(model)),
-        display: display(model),
+        current: current_view(model),
         layout: layout_view(model),
         editor: model.editor.then(|| editor_view(model)),
         keyboard: model
@@ -557,16 +536,12 @@ pub fn view_model(model: &Model) -> ViewModel {
     }
 }
 
-/// A part's sound, for a display.
-fn current_view(model: &Model, index: usize) -> Option<CurrentView> {
-    let id = model.picked(index)?;
-    let patch = model.patch(id)?;
+/// The selected part's sound.
+fn current_view(model: &Model) -> Option<CurrentView> {
+    let id = model.picked(model.editing())?;
+    model.patch(id)?;
     Some(CurrentView {
         id: row_id(id),
-        name: patch.name.clone(),
-        category: patch.category.name().into(),
-        bank: patch.bank().map(Bank::name).unwrap_or_default().into(),
-        address: patch.address(),
         favourite: model.favourites.contains(&id),
     })
 }
@@ -655,17 +630,6 @@ pub fn preset_name(model: &Model) -> String {
         || format!("Preset {}", model.presets.len() + 1),
         |names| names.join(" / "),
     )
-}
-
-/// The display: the part being edited.
-fn display(model: &Model) -> DisplayView {
-    let index = model.editing();
-    DisplayView {
-        part: parts::number(index),
-        several: model.parts.len() > 1,
-        keys: keys(model, index),
-        sound: current_view(model, index),
-    }
 }
 
 fn control_view(model: &Model, control: Control) -> ControlView {
@@ -967,17 +931,6 @@ fn ticks() -> Vec<NoteTick> {
             label: go_keys::note_name(note),
         })
         .collect()
-}
-
-/// The keys a part plays, and its octave shift if any: `Up to B3 · Oct −1`,
-/// `All keys`.
-fn keys(model: &Model, index: usize) -> String {
-    let part = &model.parts[index];
-    let range = go_keys::keys_text(part.low, part.high);
-    match part.octave() {
-        0 => range,
-        shift => format!("{range} · Oct {}", Control::Octave.text(i16::from(shift))),
-    }
 }
 
 /// `1383` as `1,383`.

@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use crux_core::{Core, Request};
 use shared::{
     Bank, Category, ControlView, Effect, Event, GoVoices, LayersStatus, LayersView, Layout,
-    PasteView, Place, Platform, Setting, Tab, ViewModel,
+    PasteView, Place, Platform, Setting, Tab, ViewModel, ZoneView,
     go_keys::{self, Zone},
     layer::LayerControl,
     midi::{ConnectMidi, Connection, MidiDevice, MidiDevices, Transport, WatchDevices},
@@ -170,15 +170,13 @@ fn selecting_sends_bank_select_and_program_change() {
     let piano = shell.id_of("JUNO Piano 1");
     shell.send(Event::Select(piano));
     assert_eq!(shell.sent, [("go".to_string(), JUNO_PIANO_ON_1.to_vec())]);
-    let display = shell.view().display;
-    assert_eq!((display.part, display.several), (1, false));
-    let current = display.sound.unwrap();
-    assert_eq!(current.name, "JUNO Piano 1");
+    let view = shell.view();
+    assert_eq!(view.current.as_ref().unwrap().id, piano);
+    let zone = editing(&view);
     assert_eq!(
-        (current.category.as_str(), current.bank.as_str()),
-        ("Acoustic piano", "JUNO-DS")
+        (zone.sound.as_str(), zone.category.as_str()),
+        ("JUNO Piano 1", "Acoustic piano")
     );
-    assert_eq!(current.address, "87·64·004");
 }
 
 #[test]
@@ -303,12 +301,12 @@ fn next_and_previous_step_through_the_list_and_wrap() {
     assert!(ids.len() > 2);
 
     shell.send(Event::Next);
-    assert_eq!(shell.view().display.sound.unwrap().id, ids[0]);
+    assert_eq!(shell.view().current.unwrap().id, ids[0]);
     shell.send(Event::Next);
-    assert_eq!(shell.view().display.sound.unwrap().id, ids[1]);
+    assert_eq!(shell.view().current.unwrap().id, ids[1]);
     shell.send(Event::Previous);
     shell.send(Event::Previous);
-    assert_eq!(shell.view().display.sound.unwrap().id, *ids.last().unwrap());
+    assert_eq!(shell.view().current.unwrap().id, *ids.last().unwrap());
 }
 
 #[test]
@@ -356,10 +354,7 @@ fn settings_survive_a_relaunch() {
 
     // The sound playing comes back, and goes to the keyboard when it
     // connects.
-    assert_eq!(
-        relaunched.view().display.sound.unwrap().name,
-        "JUNO Piano 1"
-    );
+    assert_eq!(editing(&relaunched.view()).sound, "JUNO Piano 1");
     relaunched.connect_keyboard();
     assert_eq!(relaunched.sent.len(), 1);
     assert!(
@@ -518,13 +513,9 @@ fn splitting_sends_both_parts_and_the_keys_then_picks_the_lower_one() {
         [("From C4", false), ("Up to B3", true)],
         "the lower part is next"
     );
-    let display = &view.display;
-    assert_eq!(
-        (display.part, display.several),
-        (2, true),
-        "the part being edited"
-    );
-    assert_eq!(display.sound.as_ref().unwrap().category, "Acoustic piano");
+    let lower = editing(&view);
+    assert_eq!(lower.part, 1, "the part being edited");
+    assert_eq!(lower.category, "Acoustic piano");
 
     // A pick now changes the lower part only, written to part 2.
     shell.sent.clear();
@@ -539,9 +530,12 @@ fn splitting_sends_both_parts_and_the_keys_then_picks_the_lower_one() {
         )]
     );
     let view = shell.view();
-    assert_eq!(view.display.sound.unwrap().name, "88StageGrand");
-    assert_eq!(view.display.keys, "Up to B3");
-    let upper = display_for(&mut shell, "JUNO Piano 1");
+    let lower = editing(&view);
+    assert_eq!(
+        (lower.sound.as_str(), lower.keys.as_str()),
+        ("88StageGrand", "Up to B3")
+    );
+    let upper = zone_for(&mut shell, "JUNO Piano 1");
     assert_eq!(upper.keys, "From C4");
 
     // Part 1 again: a program change on the channel, and part 1.
@@ -564,7 +558,7 @@ fn layering_and_going_back_to_one_sound() {
     keys.extend(go_keys::zone(2, Zone::FULL));
     keys.extend(off_from(3));
     assert!(layered.ends_with(&keys));
-    assert_eq!(shell.view().display.keys, "All keys");
+    assert_eq!(editing(&shell.view()).keys, "All keys");
 
     shell.sent.clear();
     shell.send(Event::StartLayout(Layout::One));
@@ -573,7 +567,7 @@ fn layering_and_going_back_to_one_sound() {
     assert!(shell.sent[0].1.ends_with(&keys));
     let view = shell.view();
     assert_eq!(view.layout.zones.len(), 1);
-    assert_eq!((view.display.part, view.display.several), (1, false));
+    assert_eq!(editing(&view).part, 0);
 }
 
 #[test]
@@ -618,7 +612,8 @@ fn each_part_s_keys_move_on_their_own_and_octave_resends_them() {
         ]
     );
     let view = shell.view();
-    assert_eq!(view.display.keys, "Up to F#3 · Oct −1");
+    assert_eq!(editing(&view).keys, "Up to F#3");
+    assert_eq!(octave(&mut shell), "−1");
     assert_eq!(view.layout.zones[0].keys, "From C4");
 
     // The upper part down to C3: layered with the lower one from C3 to
@@ -677,10 +672,12 @@ fn the_split_survives_a_relaunch() {
     let saved = shell.saved.clone().unwrap();
 
     let mut relaunched = Shell::with_settings(Some(saved));
-    let lower = display_for(&mut relaunched, "88StageGrand");
-    assert_eq!(lower.keys, "Up to B2 · Oct +1");
-    let upper = display_for(&mut relaunched, "JUNO Piano 1");
+    let lower = zone_for(&mut relaunched, "88StageGrand");
+    assert_eq!(lower.keys, "Up to B2");
+    assert_eq!(octave(&mut relaunched), "+1");
+    let upper = zone_for(&mut relaunched, "JUNO Piano 1");
     assert_eq!(upper.keys, "From C4", "its own keys, as they were");
+    assert_eq!(octave(&mut relaunched), "0");
 }
 
 #[test]
@@ -1783,7 +1780,7 @@ fn a_sound_picked_while_settings_load_drops_the_kept_sound_s_layers() {
         .resolve(&mut load, StoredSettings(Some(settings.to_json())))
         .unwrap();
     shell.handle(effects);
-    assert_eq!(shell.view().display.sound.unwrap().name, "JUNO Piano 1");
+    assert_eq!(editing(&shell.view()).sound, "JUNO Piano 1");
     shell.send(Event::SetControl {
         control: Control::Level,
         value: 90,
@@ -1895,7 +1892,7 @@ fn a_part_of_one_key_can_t_be_split() {
 }
 
 #[test]
-fn the_zone_map_and_displays_say_what_they_can_do() {
+fn the_zone_map_says_what_it_can_do() {
     let mut shell = Shell::with_settings(None);
     let layout = shell.view().layout;
     assert_eq!(layout.zones[0].title, "Part 1");
@@ -1927,8 +1924,8 @@ fn a_preset_lists_its_parts_keys() {
     assert_eq!(keys, [(60, 127), (0, 59)]);
 }
 
-/// The display for the part playing `sound`, selected for it.
-fn display_for(shell: &mut Shell, sound: &str) -> shared::DisplayView {
+/// The part playing `sound`, selected.
+fn zone_for(shell: &mut Shell, sound: &str) -> ZoneView {
     let part = shell
         .view()
         .layout
@@ -1938,9 +1935,26 @@ fn display_for(shell: &mut Shell, sound: &str) -> shared::DisplayView {
         .map(|zone| zone.part)
         .expect("a part plays it");
     shell.send(Event::EditPart(part));
-    let display = shell.view().display;
-    assert_eq!(display.sound.as_ref().unwrap().name, sound);
-    display
+    editing(&shell.view())
+}
+
+/// The selected part's lane.
+fn editing(view: &ViewModel) -> ZoneView {
+    view.layout
+        .zones
+        .iter()
+        .find(|zone| zone.editing)
+        .cloned()
+        .expect("a part is selected")
+}
+
+/// The selected part's octave, as the Edit panel shows it.
+fn octave(shell: &mut Shell) -> String {
+    let part = editing(&shell.view()).part;
+    shell.send(Event::OpenEditor(part));
+    let play = &shell.view().editor.unwrap().groups[1];
+    assert_eq!(play.controls[0].label, "Octave");
+    play.controls[0].text.clone()
 }
 
 #[test]
@@ -1949,10 +1963,10 @@ fn open_editor_opens_it_on_a_part_whether_it_was_open_or_not() {
     shell.send(Event::AddPart);
     shell.send(Event::OpenEditor(0));
     assert!(shell.view().editor.is_some());
-    assert_eq!(shell.view().display.part, 1);
+    assert_eq!(editing(&shell.view()).part, 0);
     shell.send(Event::OpenEditor(1));
     assert!(shell.view().editor.is_some(), "still open");
-    assert_eq!(shell.view().display.part, 2);
+    assert_eq!(editing(&shell.view()).part, 1);
 }
 
 #[test]
@@ -1960,11 +1974,7 @@ fn a_zone_names_its_sound_s_category() {
     let mut shell = Shell::with_settings(None);
     assert_eq!(shell.view().layout.zones[0].category, "");
     shell.send(Event::Select(0));
-    let zone = &shell.view().layout.zones[0];
-    assert_eq!(
-        Some(zone.category.clone()),
-        shell.view().display.sound.map(|c| c.category)
-    );
+    assert_eq!(shell.view().layout.zones[0].category, "Acoustic piano");
 }
 
 #[test]

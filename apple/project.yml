@@ -29,7 +29,7 @@ targetTemplates:
       - sdk: CoreMIDI.framework
     settings:
       PRODUCT_NAME: GoVoices
-      MARKETING_VERSION: 0.1.0 # as the core's
+      MARKETING_VERSION: 0.2.0 # as the core's
       CURRENT_PROJECT_VERSION: 1
       PRODUCT_BUNDLE_IDENTIFIER: com.tszarzynski.govoices
       OTHER_LDFLAGS: [-w]

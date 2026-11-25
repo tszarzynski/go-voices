@@ -35,8 +35,8 @@ pub use layers::Tab;
 pub use parts::Layout;
 pub use view::{
     BankNode, BluetoothView, ChoiceView, ConnectionView, ControlView, CurrentView, DeviceState,
-    DeviceView, DisplayView, EditorView, GroupView, KeyRangeView, KeysView, LayerCardView,
-    LayersStatus, LayersView, LayoutView, LoadedView, NoteTick, PasteView, PlaceView, PointView,
-    PresetView, RowView, SectionView, Setting, TabView, ViewModel, WavePickerView, WaveRowView,
-    WaveView, ZoneView,
+    DeviceView, EditorView, GroupView, KeyRangeView, KeysView, LayerCardView, LayersStatus,
+    LayersView, LayoutView, LoadedView, NoteTick, PasteView, PlaceView, PointView, PresetView,
+    RowView, SectionView, Setting, TabView, ViewModel, WavePickerView, WaveRowView, WaveView,
+    ZoneView,
 };
