@@ -8,7 +8,7 @@ import SwiftUI
 enum GoKeys {
     /// The keyboard's red: its body, the round buttons' rims, what's on,
     /// and what's changed (Edited, a changed knob's ring).
-    static let accent = Color(hex: 0xD82D19)
+    static let accent = Color(hex: 0xE0242B)
 
     static let background = Color(hex: 0x1C1C1C) // the list
     static let panel = Color(hex: 0x272727) // the strips above and below it

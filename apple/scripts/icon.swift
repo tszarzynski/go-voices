@@ -12,7 +12,7 @@ func rgb(_ hex: UInt32, _ alpha: CGFloat = 1) -> CGColor {
             blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
 }
 
-let red = rgb(0xD82D19)
+let red = rgb(0xE0242B)
 let background = rgb(0x272727) // the panels, as the app
 let face = rgb(0x272727)
 let text = rgb(0xFFFFFF)
