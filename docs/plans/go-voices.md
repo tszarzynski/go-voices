@@ -224,7 +224,7 @@ go-voices/
 - [x] The LCD dropped: the selected lane is lit amber (dimmer in Dark), twice as tall, with the sound's star and an outlined EDIT; the other lanes silver, all numbered `[1]`–`[4]`; ⌘1–⌘4 select a part; − and + dropped for ↑ ↓ (also in the search field) and ⌘← ⌘→; errors as a wine banner over the list; VT323 removed; `ViewModel.display` became `current` (id and star only) {#lanes-first}
 - [x] List: the current sound filled lighter instead of a dotted rim (the rim kept for the layer card and Add part); category headings and Banks as small dim capitals close to their sounds; a gentle ease to a nearby sound, a cut to just short and an ease the rest of the way for a far one {#list-polish}
 - [x] Tried and kept as they were: the sampled red #D82D19 (back to #E0242B), a quieter wine, wine for the inactive lanes {#look-trials}
-- [ ] New README screenshot of the lanes layout {#readme-shot}
+- [x] New README screenshot of the lanes layout {#readme-shot}
 
 ### Review
 - [ ] The person tries the app with the GO:KEYS {#review}

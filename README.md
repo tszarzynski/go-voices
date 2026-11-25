@@ -2,7 +2,7 @@
 
 Browse, search and pick any of the ~1,380 sounds a Roland GO:KEYS can play over MIDI (its JUNO-DS patches and the GM2 set), and send the pick to the keyboard over Bluetooth MIDI. Runs on iPhone (portrait), iPad and Mac.
 
-![Go:Voices on the Mac: two parts across the keys (88StgGrand 3 over the upper keys, Cmp'd Fng Bs on all of them) above the keyboard, the tree of banks, the Electric piano sounds under the orange display with −, + and EDIT, and the Edit panel's Layers tab showing the amp envelope and LFO 1](docs/images/go-voices-mac.png)
+![Go:Voices on the Mac: four parts across the keys, the selected one (LonesomeRoad, up to F#4) lit amber with its star and EDIT, Music Bells, Space Voice and Brightness in silver above the keyboard; the tree of banks, the Soft lead sounds, and the Edit panel's Sound tab with Tune, Tone, Envelope and Vibrato](docs/images/go-voices-mac.png)
 
 The sound list comes from [GO:Plus](https://github.com/waldt/goplus)'s `GO-sounds.md` (see [Acknowledgements](#acknowledgements)). Selecting a sound sends bank select (CC 0 / CC 32) and a program change on the chosen channel (default 1).
 
