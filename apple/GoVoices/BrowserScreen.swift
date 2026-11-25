@@ -21,6 +21,8 @@ struct BrowserScreen: View {
     /// The search field has the keyboard: ⌘← and ⌘→ move its cursor then,
     /// rather than stepping sounds.
     @FocusState private var searching: Bool
+    /// The frame's colour, from the View menu.
+    @AppStorage(Look.key) private var look = Look.red
 
     /// Below this width (iPhone, narrow iPad), the tree and the list take
     /// turns.
@@ -56,7 +58,8 @@ struct BrowserScreen: View {
     }
 
     var body: some View {
-        // Panels set into the keyboard's red body, as its black panel is.
+        // Panels set into the keyboard's red body, as its black panel is (or
+        // into a dark one).
         VStack(spacing: GoKeys.frame) {
             Arrangement(view: view, send: send, openDevices: openDevices)
                 .panel()
@@ -105,8 +108,8 @@ struct BrowserScreen: View {
         }
         .padding(GoKeys.frame)
         // Under the Mac's hidden title bar too: the traffic lights sit on
-        // the red.
-        .background(GoKeys.accent.ignoresSafeArea())
+        // the frame.
+        .background(look.frame.ignoresSafeArea())
         .tint(GoKeys.accent)
         .onChange(of: view.query) { _, query in
             // Typing on the tree shows what it finds.

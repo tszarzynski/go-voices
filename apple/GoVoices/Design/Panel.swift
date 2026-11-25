@@ -109,13 +109,15 @@ struct LedDot: View {
 /// The display: a backlit amber LCD with dark dot-matrix text.
 struct Display<Content: View>: View {
     @ViewBuilder let content: Content
+    /// Dark: the backlight turned down a little.
+    @AppStorage(Look.key) private var look = Look.red
 
     var body: some View {
         content
             .padding(.horizontal, GoKeys.gap)
             .padding(.vertical, GoKeys.s(6))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(GoKeys.display, in: RoundedRectangle(cornerRadius: GoKeys.radius))
+            .background(look.display, in: RoundedRectangle(cornerRadius: GoKeys.radius))
             .overlay { RoundedRectangle(cornerRadius: GoKeys.radius).strokeBorder(GoKeys.line, lineWidth: 2) }
     }
 }

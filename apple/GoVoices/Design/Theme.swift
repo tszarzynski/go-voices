@@ -156,6 +156,42 @@ extension Font {
     }
 }
 
+/// The frame round the panels: the GO:KEYS red, or dark, easier on the
+/// eyes for long sessions. The Mac's View menu's Theme.
+enum Look: String, CaseIterable, Identifiable {
+    case red
+    case dark
+
+    /// Where it's kept.
+    static let key = "look"
+
+    var id: Self { self }
+
+    var label: String {
+        switch self {
+        case .red: "Red"
+        case .dark: "Dark"
+        }
+    }
+
+    /// The frame's colour: darker than the panels it holds.
+    var frame: Color {
+        switch self {
+        case .red: GoKeys.accent
+        case .dark: Color(hex: 0x111111)
+        }
+    }
+
+    /// The LCD's backlight: in the dark, turned down a little so it
+    /// doesn't glare.
+    var display: Color {
+        switch self {
+        case .red: GoKeys.display
+        case .dark: Color(hex: 0xE06A10)
+        }
+    }
+}
+
 /// How big the Mac draws everything: its View menu's Text Size.
 enum TextSize: String, CaseIterable, Identifiable {
     /// As the iPad app looks on a Mac: iPad sizes at 77%.

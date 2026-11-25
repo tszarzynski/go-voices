@@ -7,6 +7,8 @@ struct GoVoicesApp: App {
     @State private var pairing: Pairing
     /// The Mac's Text Size; every window is drawn again when it changes.
     @AppStorage(TextSize.key) private var textSize = TextSize.comfortable
+    /// The Mac's Theme: the frame red or dark.
+    @AppStorage(Look.key) private var look = Look.red
 
     init() {
         let pairing = Pairing()
@@ -50,6 +52,10 @@ struct GoVoicesApp: App {
                     // ⌘= and ⌘+ alike, as in other Mac apps.
                     .keyboardShortcut("=", modifiers: .command)
                     .disabled(textSize == .comfortable)
+                Divider()
+                Picker("Theme", selection: $look) {
+                    ForEach(Look.allCases) { Text($0.label).tag($0) }
+                }
                 Divider()
             }
             CommandGroup(replacing: .appInfo) { OpenWindowButton(title: "About Go:Voices", id: "about") }
