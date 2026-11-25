@@ -17,25 +17,6 @@ struct AppBadge: View {
     }
 }
 
-/// A dark well holding a group of rows, as the layer cards and the
-/// keyboard sheet's devices.
-private struct Well<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) { content }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(GoKeys.background, in: RoundedRectangle(cornerRadius: GoKeys.radius))
-    }
-}
-
-/// A hairline between rows in a well.
-private struct Hairline: View {
-    var body: some View {
-        Rectangle().fill(GoKeys.panel).frame(height: 1)
-    }
-}
-
 /// Done, on iPhone and iPad, where About and Help are sheets.
 private struct DoneButton: View {
     @Environment(\.dismiss) private var dismiss
@@ -109,13 +90,10 @@ struct AboutView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                VStack(alignment: .leading, spacing: GoKeys.gap) {
-                    Text("Built on").goKeys(.heading).accessibilityAddTraits(.isHeader)
-                    Well {
-                        ForEach(Array(credits.enumerated()), id: \.element.id) { index, credit in
-                            if index > 0 { Hairline() }
-                            row(credit)
-                        }
+                Card(title: "Built on") {
+                    ForEach(Array(credits.enumerated()), id: \.element.id) { index, credit in
+                        if index > 0 { Hairline() }
+                        row(credit)
                     }
                 }
 
@@ -256,53 +234,33 @@ struct HelpView: View {
                     DoneButton()
                 }
                 ForEach(topics) { topic in
-                    VStack(alignment: .leading, spacing: GoKeys.gap) {
-                        Label {
-                            Text(topic.title).goKeys(.heading)
-                        } icon: {
-                            Image(systemName: topic.icon)
-                                .font(.system(size: GoKeys.t(12), weight: .semibold))
+                    Card(title: topic.title, icon: topic.icon) {
+                        ForEach(Array(topic.points.enumerated()), id: \.offset) { index, point in
+                            if index > 0 { Hairline() }
+                            Text("\(Text(point.lead).fontWeight(.semibold).foregroundStyle(GoKeys.text)) \(point.text)")
+                                .font(GoKeysText.row.font)
                                 .foregroundStyle(GoKeys.dim)
-                        }
-                        .accessibilityAddTraits(.isHeader)
-                        Well {
-                            ForEach(Array(topic.points.enumerated()), id: \.offset) { index, point in
-                                if index > 0 { Hairline() }
-                                Text("\(Text(point.lead).fontWeight(.semibold).foregroundStyle(GoKeys.text)) \(point.text)")
-                                    .font(GoKeysText.row.font)
-                                    .foregroundStyle(GoKeys.dim)
-                                    .lineSpacing(GoKeys.s(3))
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .padding(.horizontal, GoKeys.page)
-                                    .padding(.vertical, GoKeys.page)
-                            }
+                                .lineSpacing(GoKeys.s(3))
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, GoKeys.page)
+                                .padding(.vertical, GoKeys.page)
                         }
                     }
                 }
                 #if os(macOS)
-                VStack(alignment: .leading, spacing: GoKeys.gap) {
-                    Label {
-                        Text("Shortcuts").goKeys(.heading)
-                    } icon: {
-                        Image(systemName: "command")
-                            .font(.system(size: GoKeys.t(12), weight: .semibold))
-                            .foregroundStyle(GoKeys.dim)
-                    }
-                    .accessibilityAddTraits(.isHeader)
-                    Well {
-                        ForEach(Array(shortcuts.enumerated()), id: \.offset) { index, shortcut in
-                            if index > 0 { Hairline() }
-                            HStack(spacing: GoKeys.page) {
-                                HStack(spacing: GoKeys.joined) {
-                                    ForEach(shortcut.0, id: \.self) { Keycap(key: $0) }
-                                }
-                                .frame(width: GoKeys.s(84), alignment: .leading)
-                                Text(shortcut.1).goKeys(.row)
+                Card(title: "Shortcuts", icon: "command") {
+                    ForEach(Array(shortcuts.enumerated()), id: \.offset) { index, shortcut in
+                        if index > 0 { Hairline() }
+                        HStack(spacing: GoKeys.page) {
+                            HStack(spacing: GoKeys.joined) {
+                                ForEach(shortcut.0, id: \.self) { Keycap(key: $0) }
                             }
-                            .padding(.horizontal, GoKeys.page)
-                            .padding(.vertical, GoKeys.gap)
-                            .accessibilityElement(children: .combine)
+                            .frame(width: GoKeys.s(84), alignment: .leading)
+                            Text(shortcut.1).goKeys(.row)
                         }
+                        .padding(.horizontal, GoKeys.page)
+                        .padding(.vertical, GoKeys.gap)
+                        .accessibilityElement(children: .combine)
                     }
                 }
                 #endif

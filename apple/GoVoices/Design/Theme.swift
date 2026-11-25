@@ -15,6 +15,7 @@ enum GoKeys {
     static let control = Color(hex: 0x353535) // wells: knob faces, key bars, key caps
     static let controlPressed = Color(hex: 0x444444)
     static let line = Color(hex: 0x111111) // 1px borders between controls
+    static let inset = Color(hex: 0x141414) // a readout or graph set into a card
 
     static let text = Color(hex: 0xE4E4E4)
     /// Text selected in a list: brighter than the rest.

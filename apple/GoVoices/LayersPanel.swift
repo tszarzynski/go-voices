@@ -130,8 +130,7 @@ private struct WaveRow: View {
     let send: (Event) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GoKeys.page) {
-            Text("Wave").goKeys(.heading)
+        Card(title: "Wave") {
             HStack(spacing: GoKeys.gap) {
                 ToggleGroup {
                     Button { send(.stepWave(false)) } label: { Image(systemName: "chevron.left") }
@@ -153,6 +152,7 @@ private struct WaveRow: View {
                     .buttonStyle(FlatButtonStyle())
                     .help("Choose from every wave, by name")
             }
+            .padding(GoKeys.page)
         }
     }
 }
@@ -188,7 +188,7 @@ struct EnvelopeShape: View {
             }
         }
         .padding(GoKeys.gap)
-        .background(GoKeys.background, in: RoundedRectangle(cornerRadius: GoKeys.radius))
+        .background(GoKeys.inset, in: RoundedRectangle(cornerRadius: GoKeys.radius))
         .accessibilityHidden(true)
     }
 }

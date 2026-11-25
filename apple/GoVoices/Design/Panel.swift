@@ -144,8 +144,8 @@ struct FlatMenu<Content: View>: View {
             }
             .padding(.horizontal, GoKeys.gap)
             .frame(minHeight: GoKeys.s(28))
-            .background(GoKeys.background, in: RoundedRectangle(cornerRadius: GoKeys.radius))
-            .overlay { RoundedRectangle(cornerRadius: GoKeys.radius).strokeBorder(GoKeys.line, lineWidth: 1) }
+            .background(GoKeys.inset, in: RoundedRectangle(cornerRadius: GoKeys.radius))
+            .overlay { RoundedRectangle(cornerRadius: GoKeys.radius).strokeBorder(GoKeys.control, lineWidth: 1) }
             .contentShape(RoundedRectangle(cornerRadius: GoKeys.radius))
         }
         .menuStyle(.button)
@@ -377,53 +377,55 @@ struct ChoiceCell: View {
     }
 }
 
-/// Groups of settings on one grid of equal cells: a knob or a choice takes
-/// a cell; an envelope's shape takes two. Each group has a row of its own,
-/// so knobs line up down the page.
+/// Groups of settings, each a card of equal cells: a knob or a choice
+/// takes a cell; an envelope's shape takes two, a layer's keys six. Every
+/// card is as wide and its cells as wide, so knobs line up down the page.
 struct ControlGrid: View {
     let groups: [GroupView]
     /// The keyboard, to draw a layer's keys on, and its octaves.
     var keyboard: KeyAxis?
     var ticks: [NoteTick] = []
-    /// Just the controls: the headings and notes shown elsewhere.
-    var bare = false
+    /// The cards' symbol, if any.
+    var icon: String?
     let send: (Event) -> Void
 
-    /// The grid every Edit panel view lines up on.
-    static var grid: GridLayout { GridLayout(minCell: GoKeys.s(70), gap: GoKeys.page) }
-
     var body: some View {
-        Self.grid {
-            ForEach(Array(groups.enumerated()), id: \.element.title) { index, group in
-                if !bare {
-                    // Never cut short: the group is made wide enough.
-                    Text(group.title).goKeys(.heading).fixedSize()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .layoutValue(key: GridSlot.self, value: GridSlot(group: index, kind: .heading))
-                }
-                ForEach(group.controls, id: \.setting) { control in
-                    if control.choices.isEmpty {
-                        Knob(control: control) { send(control.set($0)) } reset: { send(control.reset) }
-                            .layoutValue(key: GridSlot.self, value: GridSlot(group: index, kind: .cell(1)))
-                    } else {
-                        ChoiceCell(control: control) { send(control.set($0)) }
-                            .layoutValue(key: GridSlot.self, value: GridSlot(group: index, kind: .cell(1)))
+        VStack(alignment: .leading, spacing: GoKeys.section) {
+            ForEach(groups, id: \.title) { group in
+                Card(title: group.title, icon: icon) {
+                    // A value's line has room under its digits: a little
+                    // less below, so the card looks even.
+                    GridLayout(minCell: GoKeys.s(70), gap: GoKeys.page) { cells(group) }
+                        .padding([.horizontal, .top], GoKeys.page)
+                        .padding(.bottom, GoKeys.gap)
+                    if !group.note.isEmpty {
+                        Text(group.note).goKeys(.detail, color: GoKeys.dim)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, GoKeys.page)
+                            .padding(.bottom, GoKeys.page)
                     }
                 }
-                if let keys = group.keys, let keyboard {
-                    KeyRangeStrip(range: keys, keyboard: keyboard, ticks: ticks, send: send)
-                        .layoutValue(key: GridSlot.self, value: GridSlot(group: index, kind: .cell(6)))
-                }
-                if !group.envelope.isEmpty {
-                    EnvelopeShape(points: group.envelope)
-                        .layoutValue(key: GridSlot.self, value: GridSlot(group: index, kind: .cell(2)))
-                }
-                if !bare, !group.note.isEmpty {
-                    Text(group.note).goKeys(.row, color: GoKeys.dim)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .layoutValue(key: GridSlot.self, value: GridSlot(group: index, kind: .note))
-                }
             }
+        }
+    }
+
+    /// A group's controls, and its keys or envelope, as grid cells.
+    @ViewBuilder
+    private func cells(_ group: GroupView) -> some View {
+        ForEach(group.controls, id: \.setting) { control in
+            if control.choices.isEmpty {
+                Knob(control: control) { send(control.set($0)) } reset: { send(control.reset) }
+            } else {
+                ChoiceCell(control: control) { send(control.set($0)) }
+            }
+        }
+        if let keys = group.keys, let keyboard {
+            KeyRangeStrip(range: keys, keyboard: keyboard, ticks: ticks, send: send)
+                .layoutValue(key: GridSpan.self, value: 6)
+        }
+        if !group.envelope.isEmpty {
+            EnvelopeShape(points: group.envelope)
+                .layoutValue(key: GridSpan.self, value: 2)
         }
     }
 }
@@ -438,26 +440,15 @@ extension ControlView {
     }
 }
 
-/// Where a view goes in a `GridLayout`: its group, and whether it's the
-/// group's heading, a cell (so many columns wide) or its note.
-struct GridSlot: LayoutValueKey, Equatable {
-    enum Kind: Equatable {
-        case heading
-        case cell(Int)
-        case note
-    }
-
-    static let defaultValue = GridSlot(group: 0, kind: .cell(1))
-
-    var group: Int
-    var kind: Kind
+/// How many of a `GridLayout`'s columns a view takes: one, unless set.
+struct GridSpan: LayoutValueKey {
+    static let defaultValue = 1
 }
 
-/// As many columns as fit at `minCell` or wider, filling the width. Each
-/// group's heading spans its cells (and the group is at least as wide as
-/// its heading's words); its cells all have the height of the
-/// tallest one-column cell, wrapping onto more lines only when the group is
-/// wider than the grid; its note goes under them.
+/// As many columns as fit at `minCell` or wider, filling the width. The
+/// cells all have the height of the tallest; they wrap onto more lines only
+/// when there are more than fit, and then share the lines out evenly (six
+/// on five columns as three and three, not five and one).
 struct GridLayout: SwiftUI.Layout {
     var minCell: CGFloat
     var gap: CGFloat
@@ -483,76 +474,40 @@ struct GridLayout: SwiftUI.Layout {
         let cell = (width - gap * CGFloat(columns - 1)) / CGFloat(columns)
         let x = { (column: Int) in CGFloat(column) * (cell + gap) }
         let span = { (count: Int) in CGFloat(count) * cell + CGFloat(count - 1) * gap }
-        let slots = subviews.map { $0[GridSlot.self] }
-        let cellHeight = zip(subviews, slots)
-            .compactMap { subview, slot -> CGFloat? in
-                guard case let .cell(count) = slot.kind else { return nil }
-                return subview.sizeThatFits(ProposedViewSize(width: span(min(count, columns)), height: nil)).height
-            }
+        let spans = subviews.map { min(max($0[GridSpan.self], 1), columns) }
+        let cellHeight = zip(subviews, spans)
+            .map { subview, count in subview.sizeThatFits(ProposedViewSize(width: span(count), height: nil)).height }
             .max() ?? 0
-        // One rhythm: a heading close to its controls, their lines a little
-        // apart, the next row of groups clearly so.
-        let headingGap = GoKeys.page
-        let lineGap = GoKeys.gap * 2
-        let rowGap = GoKeys.section
+        let lineGap = GoKeys.gap
 
-        var frames = Array(repeating: CGRect.zero, count: subviews.count)
-        var column = 0
-        var rowTop: CGFloat = 0
-        var rowBottom: CGFloat = 0
-        var index = 0
-        while index < subviews.count {
-            // One group: its views run on while they share its index.
-            let group = slots[index].group
-            var end = index
-            while end < subviews.count, slots[end].group == group { end += 1 }
-            let members = Array(index ..< end)
-            let wide = members.reduce(0) { total, member in
-                if case let .cell(count) = slots[member].kind { total + min(count, columns) } else { total }
+        // The line each cell starts, packing lines `wrap` columns wide.
+        func breaks(_ wrap: Int) -> [Bool] {
+            var column = 0
+            return spans.map { count in
+                let breaking = column > 0 && column + count > wrap
+                column = (breaking ? 0 : column) + count
+                return breaking
             }
-            // Wide enough for its heading too.
-            let heading = members.first { slots[$0].kind == .heading }
-            let headingWidth = heading.map { subviews[$0].sizeThatFits(.unspecified).width } ?? 0
-            let headingColumns = Int(((headingWidth + gap) / (cell + gap)).rounded(.up))
-            let groupColumns = min(max(wide, headingColumns, 1), columns)
-            // One group a row: each starts on a new one.
-            if column > 0 {
-                column = 0
-                rowTop = rowBottom + rowGap
-            }
-            let left = x(column)
-            let groupWidth = span(groupColumns)
-            var top = rowTop
-            if let heading {
-                let height = subviews[heading].sizeThatFits(ProposedViewSize(width: groupWidth, height: nil)).height
-                frames[heading] = CGRect(x: left, y: top, width: groupWidth, height: height)
-                top += height + headingGap
-            }
-            var line = 0
-            var lineColumn = 0
-            var bottom = top
-            for member in members {
-                guard case let .cell(wanted) = slots[member].kind else { continue }
-                let count = min(wanted, groupColumns)
-                if lineColumn + count > groupColumns {
-                    line += 1
-                    lineColumn = 0
-                }
-                let y = top + CGFloat(line) * (cellHeight + lineGap)
-                frames[member] = CGRect(x: left + x(lineColumn), y: y, width: span(count), height: cellHeight)
-                bottom = y + cellHeight
-                lineColumn += count
-            }
-            for member in members where slots[member].kind == .note {
-                let height = subviews[member].sizeThatFits(ProposedViewSize(width: groupWidth, height: nil)).height
-                frames[member] = CGRect(x: left, y: bottom + GoKeys.gap, width: groupWidth, height: height)
-                bottom += GoKeys.gap + height
-            }
-            rowBottom = max(rowBottom, bottom)
-            column += groupColumns
-            index = end
         }
-        return (frames, rowBottom)
+        // No orphans: the narrowest lines that need no more of them than
+        // the full width does.
+        let lines = { (wrap: Int) in breaks(wrap).filter(\.self).count }
+        let fewest = lines(columns)
+        let wrap = ((spans.max() ?? 1) ... columns).first { lines($0) == fewest } ?? columns
+
+        var frames: [CGRect] = []
+        var line = 0
+        var column = 0
+        for (count, breaking) in zip(spans, breaks(wrap)) {
+            if breaking {
+                line += 1
+                column = 0
+            }
+            let y = CGFloat(line) * (cellHeight + lineGap)
+            frames.append(CGRect(x: x(column), y: y, width: span(count), height: cellHeight))
+            column += count
+        }
+        return (frames, frames.last?.maxY ?? 0)
     }
 }
 
@@ -1071,10 +1026,10 @@ struct SearchBox<Trailing: View>: View {
         }
         .padding(.horizontal, GoKeys.gap)
         .frame(height: GoKeys.row)
-        .background(GoKeys.background, in: RoundedRectangle(cornerRadius: GoKeys.radius))
+        .background(GoKeys.inset, in: RoundedRectangle(cornerRadius: GoKeys.radius))
         .overlay {
             RoundedRectangle(cornerRadius: GoKeys.radius)
-                .strokeBorder(focused.wrappedValue ? Pad.silver.base : GoKeys.line, lineWidth: 1)
+                .strokeBorder(focused.wrappedValue ? Pad.silver.base : GoKeys.control, lineWidth: 1)
         }
     }
 }
@@ -1089,5 +1044,86 @@ struct EmptyMessage: View {
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, GoKeys.empty)
+    }
+}
+
+/// A dark well holding a group of rows, as the layer cards.
+struct Well<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) { content }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(GoKeys.background, in: RoundedRectangle(cornerRadius: GoKeys.radius))
+    }
+}
+
+/// A hairline between rows in a well.
+struct Hairline: View {
+    var body: some View {
+        Rectangle().fill(GoKeys.panel).frame(height: 1)
+    }
+}
+
+/// A group in a sheet: its heading, with a small icon, over a well of
+/// rows. Help and the keyboard sheet are made of these.
+struct Card<Content: View>: View {
+    let title: String
+    var icon: String?
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GoKeys.gap) {
+            Label {
+                Text(title).goKeys(.heading)
+            } icon: {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: GoKeys.t(12), weight: .semibold))
+                        .foregroundStyle(GoKeys.dim)
+                }
+            }
+            .labelStyle(CardLabelStyle(hasIcon: icon != nil))
+            .accessibilityAddTraits(.isHeader)
+            Well { content }
+        }
+    }
+}
+
+/// One setting in a card: its name on the left and its control on the
+/// right, with a short hint under them.
+struct CardRow<Control: View>: View {
+    let title: String
+    var hint: String?
+    @ViewBuilder let control: Control
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: GoKeys.tight) {
+            HStack(spacing: GoKeys.gap) {
+                Text(title).goKeys(.row)
+                Spacer(minLength: GoKeys.gap)
+                control
+            }
+            if let hint {
+                Text(hint).goKeys(.detail, color: GoKeys.dim)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, GoKeys.page)
+        .padding(.vertical, GoKeys.gap)
+        .frame(minHeight: GoKeys.row)
+    }
+}
+
+/// A card's heading: with its icon if it has one, else the title alone,
+/// flush with the card.
+private struct CardLabelStyle: LabelStyle {
+    let hasIcon: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: GoKeys.gap) {
+            if hasIcon { configuration.icon }
+            configuration.title
+        }
     }
 }
