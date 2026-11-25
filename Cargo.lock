@@ -170,7 +170,7 @@ checksum = "87a0cf66fd1eb2fb7b822cb78370d82303750809bc6ba855f3f58e517d3238db"
 
 [[package]]
 name = "catalogue"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "facet",
  "serde",
@@ -1061,7 +1061,7 @@ dependencies = [
 
 [[package]]
 name = "shared"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "catalogue",
  "crux-midi",
@@ -1073,7 +1073,7 @@ dependencies = [
 
 [[package]]
 name = "shared_ffi"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "boltffi",

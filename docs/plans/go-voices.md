@@ -14,7 +14,7 @@ On iPhone, iPad or Mac, you browse, search and tap any of the ~1,380 GO:KEYS voi
 - On the GO:KEYS, voices from the JUNO-DS, GM2 and drum banks change the sound, from Mac and iPhone — manual {#hardware-sound}
 - In Split or Layer mode the keyboard plays one sound on the lower keys and another on the upper keys (or both on every key), with a chosen split point and octave per half; Single restores one sound — manual: on the GO:KEYS; unit: SysEx bytes and app tests {#split-layer}
 - The Edit panel changes the edited part's level, pan, voice, legato and glide audibly, keeps them across sound changes and reconnects, and resets them; touch curve and fixed velocity apply to the whole keyboard — manual: on the GO:KEYS; unit: settings bytes and app tests {#edit-mix-play}
-- The app has a clean, flat look after the GO:KEYS (red title bar, grey panels, red dot-matrix display), places are browsed in a sidebar tree with full names (banks open to their categories, with counts), and every earlier action is still reachable — manual: screenshot review {#device-look}
+- The app has a clean, flat look after the GO:KEYS (red body or a dark one, grey panels, the selected part lit like its display), places are browsed in a sidebar tree with full names (banks open to their categories, with counts), and every earlier action is still reachable — manual: screenshot review {#device-look}
 
 ## Context
 The GO:KEYS (GO-61K) panel exposes only a fraction of its engine. goplus (`~/Sites/goplus`) showed that the rest is reachable over MIDI: about 1,380 JUNO-DS and GM2 patches are listed in `goplus/GO-sounds.md` (name | category | MSB | LSB | PC). Today you browse them with a CLI or a TouchOSC jog wheel. The goal is a clean app that lets you browse, search and tap a voice to send it to the keyboard over Bluetooth MIDI.
@@ -215,8 +215,16 @@ go-voices/
   - Swift: one search box, sheet header and empty message; the sound list redrawn only when it changes; wave rows by wave; ⌘← ⌘→ left to the search field while typing; ⌘= for Bigger; font and CoreMIDI failures logged; Help worded per platform with every shortcut; tokens and sizes in `Theme.swift`
 - [x] Idiomatic Rust pass before the first release: `commit` takes its bytes, iterator and `let … else` forms, `Patch::bank` returns an `Option` (no panic), waves found by binary search (order tested), no needless allocations, every public field documented {#rust-style}
 - [x] crux-midi 0.1.1 (`toggle`/`forget` take `impl Into<String>`), tagged and pushed; go-voices on it {#crux-midi-0-1-1}
-- [ ] First CI run passes on GitHub's runner {#ci-mac-check}
+- [x] First CI run passes on GitHub's runner (macos-15; v0.1.0 released) {#ci-mac-check}
 - [ ] The person checks the new layout on Mac and iPhone {#ui-check}
+
+### Lanes first (2026-11-25)
+- [x] Settings in cards: the Edit panel's groups, the keyboard sheet and Help from one `Card`; a group wrapping onto more lines shares its cells out evenly (no orphan); readouts in a darker inset; one group per grid, its heading and note code gone {#cards}
+- [x] View › Theme: Red (default) or Dark, the frame near-black for long sessions; kept between launches {#theme}
+- [x] The LCD dropped: the selected lane is lit amber (dimmer in Dark), twice as tall, with the sound's star and an outlined EDIT; the other lanes silver, all numbered `[1]`–`[4]`; ⌘1–⌘4 select a part; − and + dropped for ↑ ↓ (also in the search field) and ⌘← ⌘→; errors as a wine banner over the list; VT323 removed; `ViewModel.display` became `current` (id and star only) {#lanes-first}
+- [x] List: the current sound filled lighter instead of a dotted rim (the rim kept for the layer card and Add part); category headings and Banks as small dim capitals close to their sounds; a gentle ease to a nearby sound, a cut to just short and an ease the rest of the way for a far one {#list-polish}
+- [x] Tried and kept as they were: the sampled red #D82D19 (back to #E0242B), a quieter wine, wine for the inactive lanes {#look-trials}
+- [ ] New README screenshot of the lanes layout {#readme-shot}
 
 ### Review
 - [ ] The person tries the app with the GO:KEYS {#review}

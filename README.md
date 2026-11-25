@@ -18,8 +18,8 @@ xattr -dr com.apple.quarantine /Applications/GoVoices.app
 
 ## What it does
 
-- **Browse and search** the sounds by bank and category, with favourites and recents. − / + step through the list.
-- **Arrangement**, across the top: up to four parts, each a whole sound on its own keys, one lane each, drawn as the keyboard's pads: the selected part silver, the others wine-red. Drag either end of a lane to set its keys, or its middle to move it: side by side the parts split the keyboard, overlapping they layer. Add part, under the lanes, splits the selected part; Remove, in a lane's menu, gives its keys to a neighbour. Back to One Sound, in the preset's menu, keeps only the selected part. Tap a lane to pick sounds for that part (the display over the list says which); double-tap it to edit it. The keys of a layer, in the Layers tab, are set the same way.
+- **Browse and search** the sounds by bank and category, with favourites and recents. On the Mac, ↑ and ↓ (or ⌘← and ⌘→) step through the list.
+- **Arrangement**, across the top, the centre of the app: up to four parts, each a whole sound on its own keys, one numbered lane each. The selected part's lane is lit amber like the keyboard's display and twice as tall, with its sound's star and EDIT; the others are silver pads. ⌘1 to ⌘4 select a part on the Mac. Drag either end of a lane to set its keys, or its middle to move it: side by side the parts split the keyboard, overlapping they layer. Add part, under the lanes, splits the selected part; Remove, in a lane's menu, gives its keys to a neighbour. Back to One Sound, in the preset's menu, keeps only the selected part. Tap a lane to pick sounds for that part; double-tap it to edit it. The keys of a layer, in the Layers tab, are set the same way.
 - **Edit panel**, beside the list (a sheet on iPhone), for the selected part. It follows the part you select:
   - Mix: level, pan;
   - Play: octave, mono/poly, legato, glide, velocity;
@@ -29,10 +29,11 @@ xattr -dr com.apple.quarantine /Applications/GoVoices.app
   
   Reverb and chorus for the whole keyboard (on/off and level) are in the keyboard sheet.
 - **Layers:** edit the sound itself. Each of its up to four layers can be switched on or off, played alone, given another wave (step through them or search 1,045 by name), and tuned. Each layer also has a filter, filter, amp and pitch envelopes (with their shapes drawn), and two LFOs (vibrato, wah, tremolo, auto-pan). Each layer plays a range of keys and velocities, shown on its card and set by dragging on a drawn keyboard, so you can split a sound inside itself as the Combination sounds do. A layer can be copied and pasted onto another, even of another sound, from its card's menu. The app reads the sound from the keyboard first.
-- **Presets:** save the arrangement and bring it back in one tap, from Presets in the tree (each with a small map of its parts). − / + step through them like a setlist.
+- **Presets:** save the arrangement and bring it back in one tap, from Presets in the tree (each with a small map of its parts), stepped through like a setlist.
 - **Seamless switching** (optional): notes you're holding keep their sound when you pick a new one.
 - **Everything is kept** between launches and sent again when the keyboard connects.
 - **Text size** on the Mac: View › Text Size, Comfortable (the default) or Compact (as the iPad app looks on a Mac); ⌘− and ⌘+ switch.
+- **Theme** on the Mac: View › Theme, Red (the keyboard's body, the default) or Dark (a near-black frame and a dimmer lit lane, for long sessions).
 - **Help and About**: in the Help and app menus on the Mac (⌘?), at the bottom of the keyboard sheet on iPhone and iPad.
 
 What the app writes to the keyboard, and what we found by trying it, is in [docs/go-keys-midi.md](docs/go-keys-midi.md).

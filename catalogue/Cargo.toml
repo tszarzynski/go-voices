@@ -1,6 +1,6 @@
 [package]
 name = "catalogue"
-version = "0.1.0"
+version = "0.2.0"
 description = "The GO:KEYS sounds (JUNO-DS and GM2 patches), with search"
 edition.workspace = true
 rust-version.workspace = true
